@@ -10,7 +10,7 @@ The Geospatial Data Abstraction Library is a computer software library for readi
 
 ```gdalinfo HYP_HR_SR_OB_DR.tif```
 
-### 2. Convert data formats
+### 2. Convert & create datasets
 
 Converting from GeoTIFF to VRT:
 
@@ -23,6 +23,22 @@ Converting an image into a georeferenced raster by extent:
 Converting an image into a georeferenced raster by ground control points:
 
 ```gdal_translate -of 'GTiff' -gcp 0 0 -180 -90 -gcp 360 180 180 90 -gcp 0 180 -180 90 -gcp 360 0 180 -90 HYP_HR_SR_OB_DR.png HYP_HR_SR_OB_DR_georeferenced.tif```
+
+Creating vector polygon layer from raster categories:
+
+```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR.gpkg```
+
+Creating raster from selected vector features:
+
+```gdal_rasterize -at -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR.gpkg HYP_HR_SR_OB_DR.tif```
+
+Creating regular grid raster from point layer:
+
+```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
+
+Creating a mosaic layer from two or more raster images:
+
+```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
 
 ### 3. Transform coordinates
 
@@ -84,11 +100,11 @@ Creating empty raster with same size and resolution as another:
 
 ```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_A.tif --outfile=HYP_HR_SR_OB_DR_empty.tif --calc="0"```
 
-Creating a raster mask by setting values greater than 0 to 1:
+Creating raster mask by setting values greater than 0 to 1:
 
 ```gdal_calc.py --overwrite --type=Int16 --NoDataValue=0 -A HYP_HR_SR_OB_DR_A.tif --outfile=HYP_HR_SR_OB_DR_mask.tif --calc="1*(A>0)"```
 
-Creating a raster mask by keeping values greater than 0:
+Creating raster mask by keeping values greater than 0:
 
 ```gdal_calc.py --overwrite --NoDataValue=0 -A HYP_HR_SR_OB_DR_A.tif --outfile=HYP_HR_SR_OB_DR_nulled.tif --calc="A*(A>0)"```
 
