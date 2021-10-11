@@ -8,7 +8,53 @@ The Geospatial Data Abstraction Library is a computer software library for readi
 
 ### 1. Print raster info
 
-```gdalinfo HYP_HR_SR_OB_DR.tif```
+Print useful info about raster dataset:
+
+<bold>gdalinfo HYP_HR_SR_OB_DR.tif</bold>
+
+<pre><console>
+<b>gdalinfo_HYP_HR_SR_OB_DR.tif</b>
+
+Driver: GTiff/GeoTIFF
+Files: HYP_HR_SR_OB_DR.tif
+Size is 21600, 10800
+Coordinate System is:
+GEOGCRS["WGS 84",
+    DATUM["World Geodetic System 1984",
+        ELLIPSOID["WGS 84",6378137,298.257223563,
+            LENGTHUNIT["metre",1]]],
+    PRIMEM["Greenwich",0,
+        ANGLEUNIT["degree",0.0174532925199433]],
+    CS[ellipsoidal,2],
+        AXIS["geodetic latitude (Lat)",north,
+            ORDER[1],
+            ANGLEUNIT["degree",0.0174532925199433]],
+        AXIS["geodetic longitude (Lon)",east,
+            ORDER[2],
+            ANGLEUNIT["degree",0.0174532925199433]],
+    ID["EPSG",4326]]
+Data axis to CRS axis mapping: 2,1
+Origin = (-180.000000000000000,90.000000000000014)
+Pixel Size = (0.016666666666670,-0.016666666666670)
+Metadata:
+  AREA_OR_POINT=Area
+  TIFFTAG_DATETIME=2014:10:18 12:06:24
+  TIFFTAG_RESOLUTIONUNIT=2 (pixels/inch)
+  TIFFTAG_SOFTWARE=Adobe Photoshop CC 2014 (Macintosh)
+  TIFFTAG_XRESOLUTION=72
+  TIFFTAG_YRESOLUTION=72
+Image Structure Metadata:
+  INTERLEAVE=PIXEL
+Corner Coordinates:
+Upper Left  (-180.0000000,  90.0000000) (180d 0' 0.00"W, 90d 0' 0.00"N)
+Lower Left  (-180.0000000, -90.0000000) (180d 0' 0.00"W, 90d 0' 0.00"S)
+Upper Right ( 180.0000000,  90.0000000) (180d 0' 0.00"E, 90d 0' 0.00"N)
+Lower Right ( 180.0000000, -90.0000000) (180d 0' 0.00"E, 90d 0' 0.00"S)
+Center      (   0.0000000,  -0.0000000) (  0d 0' 0.00"E,  0d 0' 0.00"S)
+Band 1 Block=21600x1 Type=Byte, ColorInterp=Red
+Band 2 Block=21600x1 Type=Byte, ColorInterp=Green
+Band 3 Block=21600x1 Type=Byte, ColorInterp=Blue
+</pre>
 
 ### 2. Convert & create datasets
 
@@ -28,11 +74,11 @@ Creating vector polygon layer from raster categories:
 
 ```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR.gpkg```
 
-Creating raster from selected vector features:
+Creating raster from selected vector features, given pixel resolution:
 
-```gdal_rasterize -at -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR.gpkg HYP_HR_SR_OB_DR.tif```
+```gdal_rasterize -at -tr 0.3 0.3 -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR.gpkg HYP_HR_SR_OB_DR.tif```
 
-Creating regular grid raster from point layer:
+Creating regular grid raster from point layer, given output size and extent:
 
 ```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
 
@@ -120,14 +166,10 @@ Adding two rasters together where raster A is greater than zero:
 
 ```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_A.tif -B HYP_HR_SR_OB_DR_B.tif --outfile=HYP_HR_SR_OB_DR_A_B.tif --calc="((A>0)*A)+B"```
 
+## OGR
+
+Vector programs provided by GDAL.
+
+### 1. Print vector info
 
 
-### Miscellaneous raster operations
-
-Compress:
-
-```gdalwarp -overwrite -co COMPRESS=LZW HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_3857_compressed.tif```
-
-Tile:
-
-```gdalwarp -overwrite -co TILED=YES HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_3857_tiled.tif```
