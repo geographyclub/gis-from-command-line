@@ -52,7 +52,7 @@ Rescaling to output raster width:
 
 ```gdalwarp -overwrite -ts 4000 0 HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_4000w.tif```
 
-Smoothing raster by scaling down then scaling up:
+Smoothing DEM by scaling down then scaling up by the same factor:
 
 ```gdalwarp -of 'VRT' -ts `echo $(gdalinfo HYP_HR_SR_OB_DR.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc` 0 -r cubicspline HYP_HR_SR_OB_DR.tif /vsistdout/ | gdalwarp -overwrite -ts `echo $(gdalinfo HYP_HR_SR_OB_DR.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')` 0 -r cubicspline -t_srs 'EPSG:4326' /vsistdin/ HYP_HR_SR_OB_DR_smooth.tif```
 
@@ -61,6 +61,49 @@ Using different resampling methods:
 ```gdalwarp -overwrite -ts 4000 0 -r near -t_srs "EPSG:4326" HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_near.tif```
 
 ```gdalwarp -overwrite -ts 4000 0 -r cubicspline -t_srs "EPSG:4326" HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_cubicspline.tif```
+
+### 5. Clip raster
+
+Clipping to bounding box using `gdalwarp` or `gdal_translate`:
+
+```gdalwarp -overwrite -dstalpha -te_srs 'EPSG:4326' -te -94 42 -82 54 HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_clipped.tif```
+
+```gdal_translate -projwin -94 54 -82 42 HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_clipped.tif```
+
+Clipping to raster mask:
+
+```gdal_calc.py -A HYP_HR_SR_OB_DR.tif -B HYP_HR_SR_OB_DR_mask.tif --outfile="HYP_HR_SR_OB_DR_clipped.tif" --overwrite --type=Float32 --NoDataValue=0 --calc="A*(B>0)"```
+
+Clipping to vector features selected by SQL:
+
+```gdalwarp -overwrite -dstalpha -crop_to_cutline -cutline 'natural_earth_vector.gpkg' -csql 'SELECT geom FROM ne_110m_ocean' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_clipped.tif```
+
+### 6. Calculate
+
+Creating empty raster with same size and resolution as another:
+
+```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_A.tif --outfile=HYP_HR_SR_OB_DR_empty.tif --calc="0"```
+
+Creating a raster mask by setting values greater than 0 to 1:
+
+```gdal_calc.py --overwrite --type=Int16 --NoDataValue=0 -A HYP_HR_SR_OB_DR_A.tif --outfile=HYP_HR_SR_OB_DR_mask.tif --calc="1*(A>0)"```
+
+Creating a raster mask by keeping values greater than 0:
+
+```gdal_calc.py --overwrite --NoDataValue=0 -A HYP_HR_SR_OB_DR_A.tif --outfile=HYP_HR_SR_OB_DR_nulled.tif --calc="A*(A>0)"```
+
+Using logical operator to keep values greater than 100 and less than 150:
+
+```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_A.tif --outfile=HYP_HR_SR_OB_DR_100_150.tif --calc="A*logical_and(A>100,A<150)"```
+
+Rounding values to 3 significant digits:
+
+```gdal_calc.py --overwrite --type=Int16 -A HYP_HR_SR_OB_DR_A.tif --outfile=HYP_HR_SR_OB_DR_rounded.tif --calc="A*0.001"```
+
+Adding two rasters together where raster A is greater than zero:
+
+```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_A.tif -B HYP_HR_SR_OB_DR_B.tif --outfile=HYP_HR_SR_OB_DR_A_B.tif --calc="((A>0)*A)+B"```
+
 
 
 ### Miscellaneous raster operations
