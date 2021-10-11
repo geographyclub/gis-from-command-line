@@ -2,46 +2,57 @@
 
 This is my introduction to using open source command-line tools in Linux to make your own *Geographic Information Systems*.
 
-## 1. GDAL
+## GDAL
 
 The Geospatial Data Abstraction Library is a computer software library for reading and writing raster and vector geospatial data formats.
 
-### 1.1 Convert data formats
+### 1. Print raster info
 
-`gdal_translate -if 'GTiff' -of 'VRT' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR.vrt`
+```gdalinfo HYP_HR_SR_OB_DR.tif```
 
-### 1.2 Reproject coordinates
+### 2. Convert data formats
+
+```gdal_translate -if 'GTiff' -of 'VRT' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR.vrt```
+
+### 3. Transform coordinates
 
 Using EPSG code to transform from lat-long to Web Mercator projection:
 
-`gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_3857.tif`
+```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_3857.tif```
 
-Using PROJ definition to transform from lat-long to Van der Grinten projection:
+Using PROJ definition to transform from lat-long to van der Grinten projection:
 
-`gdalwarp -s_srs 'EPSG:4326' -t_srs '+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m no_defs' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_vandergrinten.tif`
+```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m no_defs' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_vandergrinten.tif```
 
-Editing PROJ definition to transform from lat-long to an orthographic projection centered on Toronto:
+Customizing PROJ definition to transform from lat-long to an orthographic projection centered on Toronto:
 
-`gdalwarp -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0='43.65' +lon_0='-79.34' +ellps='sphere'' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_ortho_toronto.tif`
+```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0='43.65' +lon_0='-79.34' +ellps='sphere'' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_ortho_toronto.tif```
 
-### 1.3 Rescale raster
+Piping `gdal_translate` to `gdalwarp` to georeference and transform an image in one step:
 
-Rescaling by  output file size by width and/or height:
+```gdal_translate -of 'GTiff' -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR.png /vsistdout/ | gdalwarp -overwrite -f 'GTiff' -of 'GTiff' -t_srs 'EPSG:4326' /vsistdin/ HYP_HR_SR_OB_DR_crs.tif```
 
-gdalwarp -overwrite -f 'GTiff' -ts 4000 0 -r cubicspline -t_srs "EPSG:4326" ${file} ${file%.*}_4000.tif
+### 4. Rescale raster
 
-gdalwarp -overwrite -f 'GTiff' -ts 4000 0 -r cubicspline -t_srs "EPSG:4326" ${file} ${file%.*}_4000.tif
-gdalwarp -overwrite -f 'GTiff' -ts 40000 0 -r cubicspline -t_srs "EPSG:4326" ${file%.*}_4000.tif ${file%.*}_4000_40000.tif
+Rescaling to output pixel resolution:
 
-# by pixel size
-gdalwarp -overwrite -ts `echo $(gdalinfo /home/steve/Projects/maps/dem/srtm/N48W092_N47W092_N48W091_N47W091.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/2 | bc` 0 -r cubicspline /home/steve/Projects/maps/dem/srtm/$(echo ${id[@]} | tr ' ' '_').tif /home/steve/Projects/maps/dem/srtm/$(echo ${id[@]} | tr ' ' '_')_half.tif
+```gdalwarp -overwrite -tr 1 1 HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_1xres_1yres.tif```
+
+Rescaling to output raster width:
+
+```gdalwarp -overwrite -ts 4000 0 HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_4000w.tif```
+
+Using different resampling methods:
+
+```gdalwarp -overwrite -ts 4000 0 -r near -t_srs "EPSG:4326" HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_near.tif```
+```gdalwarp -overwrite -ts 4000 0 -r cubicspline -t_srs "EPSG:4326" HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_cubicspline.tif```
+
+
+
+```gdalwarp -overwrite -ts `echo $(gdalinfo /home/steve/Projects/maps/dem/srtm/N48W092_N47W092_N48W091_N47W091.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/2 | bc` 0 -r cubicspline /home/steve/Projects/maps/dem/srtm/$(echo ${id[@]} | tr ' ' '_').tif /home/steve/Projects/maps/dem/srtm/$(echo ${id[@]} | tr ' ' '_')_half.tif```
+
 gdalwarp -overwrite -ts `echo $(gdalinfo /home/steve/Projects/maps/dem/srtm/N48W092_N47W092_N48W091_N47W091.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')` 0 -r cubicspline /home/steve/Projects/maps/dem/srtm/$(echo ${id[@]} | tr ' ' '_')_half.tif /home/steve/Projects/maps/dem/srtm/$(echo ${id[@]} | tr ' ' '_')_smooth.tif
 
-### Georeference raster
-
-Pipe `gdal_translate` to `gdalwarp` to georeference an image and transform in one step:
-
-gdal_translate -of 'VRT' -a_ullr -180 90 180 -90 ${dir}/tmp/tmp0.tif /vsistdout/ | 
 
 ### Miscellaneous raster operations
 
