@@ -12,7 +12,17 @@ The Geospatial Data Abstraction Library is a computer software library for readi
 
 ### 2. Convert data formats
 
+Converting from GeoTIFF to VRT:
+
 ```gdal_translate -if 'GTiff' -of 'VRT' HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR.vrt```
+
+Converting an image into a georeferenced raster by extent:
+
+```gdal_translate -of 'GTiff' -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR.png HYP_HR_SR_OB_DR_georeferenced.tif```
+
+Converting an image into a georeferenced raster by ground control points:
+
+```gdal_translate -of 'GTiff' -gcp 0 0 -180 -90 -gcp 360 180 180 90 -gcp 0 180 -180 90 -gcp 360 0 180 -90 HYP_HR_SR_OB_DR.png HYP_HR_SR_OB_DR_georeferenced.tif```
 
 ### 3. Transform coordinates
 
@@ -42,24 +52,23 @@ Rescaling to output raster width:
 
 ```gdalwarp -overwrite -ts 4000 0 HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_4000w.tif```
 
+Smoothing raster by scaling down then scaling up:
+
+```gdalwarp -of 'VRT' -ts `echo $(gdalinfo HYP_HR_SR_OB_DR.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc` 0 -r cubicspline HYP_HR_SR_OB_DR.tif /vsistdout/ | gdalwarp -overwrite -ts `echo $(gdalinfo HYP_HR_SR_OB_DR.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')` 0 -r cubicspline -t_srs 'EPSG:4326' /vsistdin/ HYP_HR_SR_OB_DR_smooth.tif```
+
 Using different resampling methods:
 
 ```gdalwarp -overwrite -ts 4000 0 -r near -t_srs "EPSG:4326" HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_near.tif```
+
 ```gdalwarp -overwrite -ts 4000 0 -r cubicspline -t_srs "EPSG:4326" HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_cubicspline.tif```
-
-
-
-```gdalwarp -overwrite -ts `echo $(gdalinfo /home/steve/Projects/maps/dem/srtm/N48W092_N47W092_N48W091_N47W091.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/2 | bc` 0 -r cubicspline /home/steve/Projects/maps/dem/srtm/$(echo ${id[@]} | tr ' ' '_').tif /home/steve/Projects/maps/dem/srtm/$(echo ${id[@]} | tr ' ' '_')_half.tif```
-
-gdalwarp -overwrite -ts `echo $(gdalinfo /home/steve/Projects/maps/dem/srtm/N48W092_N47W092_N48W091_N47W091.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')` 0 -r cubicspline /home/steve/Projects/maps/dem/srtm/$(echo ${id[@]} | tr ' ' '_')_half.tif /home/steve/Projects/maps/dem/srtm/$(echo ${id[@]} | tr ' ' '_')_smooth.tif
 
 
 ### Miscellaneous raster operations
 
 Compress:
 
-`gdalwarp -overwrite -co COMPRESS=LZW HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_3857_compressed.tif`
+```gdalwarp -overwrite -co COMPRESS=LZW HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_3857_compressed.tif```
 
 Tile:
 
-`gdalwarp -overwrite -co TILED=YES HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_3857_tiled.tif`
+```gdalwarp -overwrite -co TILED=YES HYP_HR_SR_OB_DR.tif HYP_HR_SR_OB_DR_3857_tiled.tif```
