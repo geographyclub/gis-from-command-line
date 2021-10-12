@@ -10,11 +10,11 @@ The Geospatial Data Abstraction Library is a computer software library for readi
 
 Print useful info about raster dataset:
 
-<bold>gdalinfo HYP_HR_SR_OB_DR_1024_512.tif</bold>
+<img src="images/HYP_HR_SR_OB_DR_1024_512.jpg" width="400" />
+
+```gdalinfo_HYP_HR_SR_OB_DR_1024_512.tif```
 
 <pre>
-<b>gdalinfo_HYP_HR_SR_OB_DR_1024_512.tif</b>
-
 Driver: GTiff/GeoTIFF
 Files: HYP_HR_SR_OB_DR_1024_512.tif
 Size is 1024, 512
@@ -76,7 +76,7 @@ Converting an image into a georeferenced raster by ground control points:
 
 Creating vector polygon layer from raster categories:
 
-```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512.gpkg```
+```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
 
 Creating raster from selected vector features, given pixel resolution:
 
