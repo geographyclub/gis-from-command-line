@@ -60,7 +60,7 @@ Band 3 Block=1024x2 Type=Byte, ColorInterp=Blue
 Band 4 Block=1024x2 Type=Byte, ColorInterp=Alpha
 </pre>
 
-### 1.2 Convert datasets
+### 1.2 Create datasets
 
 Converting from GeoTIFF to VRT:
 
@@ -77,22 +77,6 @@ Georeferencing raster by extent:
 Georeferencing raster by ground control points:
 
 ```gdal_translate -of 'GTiff' -gcp 0 0 -180 -90 -gcp 1024 512 180 90 -gcp 0 512 -180 90 -gcp 1024 0 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
-
-Creating vector polygon layer from raster categories:
-
-```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
-
-Creating raster from selected vector features, given pixel resolution:
-
-```gdal_rasterize -at -tr 0.3 0.3 -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR_1024_512.gpkg HYP_HR_SR_OB_DR_1024_512.tif```
-
-Creating regular grid raster from point layer, given output size and extent:
-
-```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
-
-Creating a mosaic layer from two or more raster images:
-
-```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
 
 ### 1.3 Transform coordinates
 
@@ -138,7 +122,23 @@ Using different resampling methods:
 
 ```gdalwarp -overwrite -ts 4000 0 -r cubicspline -t_srs "EPSG:4326" HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_cubicspline.tif```
 
-### 1.5 Clip raster
+### 1.5 Select raster data
+
+Creating vector polygon layer from raster categories:
+
+```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
+
+Creating raster from selected vector features, given pixel resolution:
+
+```gdal_rasterize -at -tr 0.3 0.3 -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR_1024_512.gpkg HYP_HR_SR_OB_DR_1024_512.tif```
+
+Creating regular grid raster from point layer, given output size and extent:
+
+```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
+
+Creating a mosaic layer from two or more raster images:
+
+```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
 
 Clipping to bounding box using `gdalwarp` or `gdal_translate`:
 
@@ -153,8 +153,6 @@ Clipping to raster mask:
 Clipping to vector features selected by SQL:
 
 ```gdalwarp -overwrite -dstalpha -crop_to_cutline -cutline 'natural_earth_vector.gpkg' -csql 'SELECT geom FROM ne_110m_ocean' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_clipped.tif```
-
-### 1.6 Calculate
 
 Creating empty raster with same size and resolution as another:
 
@@ -478,12 +476,6 @@ Converting from GPKG to PostgreSQL/PostGIS database layer and promoting from pol
 
 ```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d world -f -```
 
-Exporting clip or spatial query:
-
-```ogr2ogr -overwrite -clipsrc -94 54 -82 42 natural_earth_vector_clip.gpkg natural_earth_vector.gpkg```
-
-```ogr2ogr -overwrite -spat -180 -80 180 80 natural_earth_vector_spat.gpkg natural_earth_vector.gpkg```
-
 ### 2.3 Transform coordinates
 
 Transforming from lat-long to azimuthal equidistant projection with spatial query:
@@ -503,5 +495,11 @@ Shifting prime meridian from 0° to 180°:
 ```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over' countries_110m_180pm.gpkg countries_110m.gpkg```
 
 ### 2.4 Select vector data
+
+Exporting clip or spatial query:
+
+```ogr2ogr -overwrite -clipsrc -94 54 -82 42 natural_earth_vector_clip.gpkg natural_earth_vector.gpkg```
+
+```ogr2ogr -overwrite -spat -180 -80 180 80 natural_earth_vector_spat.gpkg natural_earth_vector.gpkg```
 
 
