@@ -60,7 +60,7 @@ Band 3 Block=1024x2 Type=Byte, ColorInterp=Blue
 Band 4 Block=1024x2 Type=Byte, ColorInterp=Alpha
 </pre>
 
-### 1.2 Convert & create datasets
+### 1.2 Convert datasets
 
 Converting from GeoTIFF to VRT:
 
@@ -451,3 +451,21 @@ NAME_TR: String (41.0)
 NAME_VI: String (56.0)
 NAME_ZH: String (33.0)
 </pre>
+
+### 2.2 Convert datasets
+
+Converting dataset from SHP to GPKG:
+
+```ogr2ogr -overwrite natural_earth_vector.gpkg natural_earth_vector.shp```
+
+Converting from GPKG to SQLite database layer with spatialite:
+
+```ogr2ogr -overwrite -f 'SQLite' -dsco SPATIALITE=YES natural_earth_vector.sqlite natural_earth_vector.gpkg ne_110m_admin_0_countries```
+
+Converting from GPKG to PostgreSQL/PostGIS database layer and promoting to multipolygon:
+
+```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=countries -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries110m natural_earth_vector.gpkg ne_110m_admin_0_countries```
+
+### 2.3 Tranform coordinates
+
+
