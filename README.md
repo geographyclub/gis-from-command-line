@@ -60,7 +60,7 @@ Band 3 Block=1024x2 Type=Byte, ColorInterp=Blue
 Band 4 Block=1024x2 Type=Byte, ColorInterp=Alpha
 </pre>
 
-### 1.2 Convert datasets
+### 1.2 Convert data formats
 
 Converting from GeoTIFF to VRT:
 
@@ -70,23 +70,23 @@ Converting from GeoTIFF to PostgreSQL/PostGIS database layer:
 
 ```raster2pgsql -d -s 4326 -I -C -M HYP_HR_SR_OB_DR_1024_512.tif -F -t auto HYP_HR_SR_OB_DR_1024_512 | psql -d world```
 
-Georeferencing raster by extent:
+Converting from GeoTIFF to regular TIFF:
+
+```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512.tif```
+
+Georeferencing image by extent:
 
 ```gdal_translate -of 'GTiff' -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
 
-Georeferencing raster by ground control points:
+Georeferencing image by ground control points:
 
 ```gdal_translate -of 'GTiff' -gcp 0 0 -180 -90 -gcp 1024 512 180 90 -gcp 0 512 -180 90 -gcp 1024 0 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
 
-Creating vector polygon layer from raster categories:
-
-```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
-
-Creating raster from selected vector features, given pixel resolution:
+Rasterizing selected vector features given pixel resolution:
 
 ```gdal_rasterize -at -tr 0.3 0.3 -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR_1024_512.gpkg HYP_HR_SR_OB_DR_1024_512.tif```
 
-Creating regular grid raster from point layer, given output size and extent:
+Gridding point layer given output size and extent:
 
 ```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
 
@@ -460,7 +460,7 @@ NAME_VI: String (56.0)
 NAME_ZH: String (33.0)
 </pre>
 
-### 2.2 Convert datasets
+### 2.2 Convert data formats
 
 Converting dataset from SHP to GPKG with UTF encoding:
 
@@ -475,6 +475,14 @@ Converting from GPKG to PostgreSQL/PostGIS database layer and promoting from pol
 ```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=world -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
 ```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d world -f -```
+
+Polygonizing raster:
+
+```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
+
+Export vector layer as SVG:
+
+ogrinfo -sql 'SELECT AsSVG(geom,1) FROM ne_110m_admin_0_countries' natural_earth_vector.gpkg
 
 ### 2.3 Transform coordinates
 
