@@ -478,20 +478,30 @@ Converting from GPKG to PostgreSQL/PostGIS database layer and promoting from pol
 
 ```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d world -f -```
 
+Exporting clip or spatial query:
+
+```ogr2ogr -overwrite -clipsrc -94 54 -82 42 natural_earth_vector_clip.gpkg natural_earth_vector.gpkg```
+
+```ogr2ogr -overwrite -spat -180 -80 180 80 natural_earth_vector_spat.gpkg natural_earth_vector.gpkg```
+
 ### 2.3 Transform coordinates
 
-Transforming from lat-long to azimuthal equidistant projection with spatial filter:
+Transforming from lat-long to azimuthal equidistant projection with spatial query:
 
 ```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -180 -80 180 80 -s_srs 'EPSG:4326' -t_srs '+proj=aeqd +lat_0=45 +lon_0=-80 +a=1000000 +b=1000000 +over +no_defs' ne_110m_admin_0_countries_aeqd.gpkg natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
-Transforming from lat-long to lambert azimuthal equal area projection with spatial filter:
+Transforming from lat-long to lambert azimuthal equal area projection with spatial query:
 
 ```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -160 -90 160 90 -s_srs 'EPSG:4326' -t_srs '+proj=laea +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs' ne_110m_admin_0_countries_laea.gpkg natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
-Transforming from lat-long to a stereographic projection around selected coordinates:
+Transforming from lat-long to a stereographic projection around indicated coordinates:
 
 ```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=stere +lon_0=-119 +lat_0=36 +lat_ts=36' ne_110m_admin_0_countries_stere.gpkg natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
 Shifting prime meridian from 0° to 180°:
 
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over' countries_110m_180pm.gpkg countries_110m.gpkg
+```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over' countries_110m_180pm.gpkg countries_110m.gpkg```
+
+### 2.4 Select vector data
+
+
