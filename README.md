@@ -60,7 +60,7 @@ Band 3 Block=1024x2 Type=Byte, ColorInterp=Blue
 Band 4 Block=1024x2 Type=Byte, ColorInterp=Alpha
 </pre>
 
-### 1.2 Create datasets
+### 1.2 Convert datasets
 
 Converting from GeoTIFF to VRT:
 
@@ -77,6 +77,22 @@ Georeferencing raster by extent:
 Georeferencing raster by ground control points:
 
 ```gdal_translate -of 'GTiff' -gcp 0 0 -180 -90 -gcp 1024 512 180 90 -gcp 0 512 -180 90 -gcp 1024 0 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
+
+Creating vector polygon layer from raster categories:
+
+```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
+
+Creating raster from selected vector features, given pixel resolution:
+
+```gdal_rasterize -at -tr 0.3 0.3 -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR_1024_512.gpkg HYP_HR_SR_OB_DR_1024_512.tif```
+
+Creating regular grid raster from point layer, given output size and extent:
+
+```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
+
+Creating a mosaic layer from two or more raster images:
+
+```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
 
 ### 1.3 Transform coordinates
 
@@ -124,31 +140,11 @@ Using different resampling methods:
 
 ### 1.5 Select raster data
 
-Creating vector polygon layer from raster categories:
-
-```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
-
-Creating raster from selected vector features, given pixel resolution:
-
-```gdal_rasterize -at -tr 0.3 0.3 -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR_1024_512.gpkg HYP_HR_SR_OB_DR_1024_512.tif```
-
-Creating regular grid raster from point layer, given output size and extent:
-
-```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
-
-Creating a mosaic layer from two or more raster images:
-
-```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
-
 Clipping to bounding box using `gdalwarp` or `gdal_translate`:
 
 ```gdalwarp -overwrite -dstalpha -te_srs 'EPSG:4326' -te -94 42 -82 54 HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_clipped.tif```
 
 ```gdal_translate -projwin -94 54 -82 42 HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_clipped.tif```
-
-Clipping to raster mask:
-
-```gdal_calc.py -A HYP_HR_SR_OB_DR_1024_512.tif -B HYP_HR_SR_OB_DR_1024_512_mask.tif --outfile="HYP_HR_SR_OB_DR_1024_512_clipped.tif" --overwrite --type=Float32 --NoDataValue=0 --calc="A*(B>0)"```
 
 Clipping to vector features selected by SQL:
 
@@ -157,6 +153,10 @@ Clipping to vector features selected by SQL:
 Creating empty raster with same size and resolution as another:
 
 ```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_empty.tif --calc="0"```
+
+Clipping to raster mask:
+
+```gdal_calc.py -A HYP_HR_SR_OB_DR_1024_512.tif -B HYP_HR_SR_OB_DR_1024_512_mask.tif --outfile="HYP_HR_SR_OB_DR_1024_512_clipped.tif" --overwrite --type=Float32 --NoDataValue=0 --calc="A*(B>0)"```
 
 Creating raster mask by setting values greater than 0 to 1:
 
