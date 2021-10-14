@@ -4,13 +4,13 @@ This is my introduction to using open source command-line tools in Linux to make
 
 <img src="images/HYP_HR_SR_OB_DR_1024_512.jpg" width="400" />
 
-## GDAL
+## 1. GDAL
 
 The Geospatial Data Abstraction Library is a computer software library for reading and writing raster and vector geospatial data formats.
 
-### 1. Print raster info
+### 1.1 Print raster info
 
-Print useful info on raster dataset:
+Printing useful info on raster dataset:
 
 ```gdalinfo_HYP_HR_SR_OB_DR_1024_512.tif```
 
@@ -60,7 +60,7 @@ Band 3 Block=1024x2 Type=Byte, ColorInterp=Blue
 Band 4 Block=1024x2 Type=Byte, ColorInterp=Alpha
 </pre>
 
-### 2. Convert & create datasets
+### 1.2 Convert & create datasets
 
 Converting from GeoTIFF to VRT:
 
@@ -90,7 +90,7 @@ Creating a mosaic layer from two or more raster images:
 
 ```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
 
-### 3. Transform coordinates
+### 1.3 Transform coordinates
 
 Using EPSG code to transform from lat-long to Web Mercator projection:
 
@@ -108,7 +108,7 @@ Piping `gdal_translate` to `gdalwarp` to georeference and transform an image in 
 
 ```gdal_translate -of 'GTiff' -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -f 'GTiff' -of 'GTiff' -t_srs 'EPSG:4326' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif```
 
-### 4. Rescale raster
+### 1.4 Rescale raster
 
 Rescaling to output pixel resolution:
 
@@ -128,7 +128,7 @@ Using different resampling methods:
 
 ```gdalwarp -overwrite -ts 4000 0 -r cubicspline -t_srs "EPSG:4326" HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_cubicspline.tif```
 
-### 5. Clip raster
+### 1.5 Clip raster
 
 Clipping to bounding box using `gdalwarp` or `gdal_translate`:
 
@@ -144,7 +144,7 @@ Clipping to vector features selected by SQL:
 
 ```gdalwarp -overwrite -dstalpha -crop_to_cutline -cutline 'natural_earth_vector.gpkg' -csql 'SELECT geom FROM ne_110m_ocean' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_clipped.tif```
 
-### 6. Calculate
+### 1.6 Calculate
 
 Creating empty raster with same size and resolution as another:
 
@@ -170,13 +170,13 @@ Adding two rasters together where raster A is greater than zero:
 
 ```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif -B HYP_HR_SR_OB_DR_1024_512_B.tif --outfile=HYP_HR_SR_OB_DR_1024_512_A_B.tif --calc="((A>0)*A)+B"```
 
-## OGR
+## 2. OGR
 
 Vector programs provided by GDAL.
 
-### 1. Print vector info
+### 2.1 Print vector info
 
-Print layers in vector dataset:
+Printing layers in vector dataset:
 
 ```ogrinfo natural_earth_vector.gpkg```
 
@@ -320,7 +320,7 @@ INFO: Open of `natural_earth_vector.gpkg'
 135: ne_110m_rivers_lake_centerlines (Line String)
 </pre>
 
-Print summary of vector layer:
+Printing summary of vector layer:
 
 ```ogrinfo -so natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
