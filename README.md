@@ -66,6 +66,10 @@ Converting from GeoTIFF to VRT:
 
 ```gdal_translate -if 'GTiff' -of 'VRT' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512.vrt```
 
+Converting from GeoTIFF to PostgreSQL/PostGIS database layer:
+
+```raster2pgsql -d -s 4326 -I -C -M HYP_HR_SR_OB_DR_1024_512.tif -F -t auto HYP_HR_SR_OB_DR_1024_512 | psql -d world```
+
 Georeferencing raster by extent:
 
 ```gdal_translate -of 'GTiff' -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
@@ -454,18 +458,32 @@ NAME_ZH: String (33.0)
 
 ### 2.2 Convert datasets
 
-Converting dataset from SHP to GPKG:
+Converting dataset from SHP to GPKG with UTF encoding:
 
-```ogr2ogr -overwrite natural_earth_vector.gpkg natural_earth_vector.shp```
+```ogr2ogr -overwrite -lco ENCODING=UTF-8 natural_earth_vector.gpkg natural_earth_vector.shp```
 
-Converting from GPKG to SQLite database layer with spatialite:
+Converting from GPKG to SQLite/Spatialite database layer:
 
 ```ogr2ogr -overwrite -f 'SQLite' -dsco SPATIALITE=YES natural_earth_vector.sqlite natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
-Converting from GPKG to PostgreSQL/PostGIS database layer and promoting to multipolygon:
+Converting from GPKG to PostgreSQL/PostGIS database layer and promoting from polygon to multipolygon:
 
-```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=countries -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries110m natural_earth_vector.gpkg ne_110m_admin_0_countries```
+```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=world -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
-### 2.3 Tranform coordinates
+```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d world -f -```
+
+### 2.3 Transform coordinates
+
+Transforming from lat-long to azimuthal equidistant projection with spatial filter:
+
+```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -180 -80 180 80 -s_srs 'EPSG:4326' -t_srs '+proj=aeqd +lat_0=45 +lon_0=-80 +a=1000000 +b=1000000 +over +no_defs' ne_110m_admin_0_countries_aeqd.gpkg natural_earth_vector.gpkg ne_110m_admin_0_countries```
+
+Transforming from lat-long to lambert azimuthal equal area projection with spatial filter:
+
+```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -160 -90 160 90 -s_srs 'EPSG:4326' -t_srs '+proj=laea +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs' ne_110m_admin_0_countries_laea.gpkg natural_earth_vector.gpkg ne_110m_admin_0_countries```
+
+Transforming from lat-long to a stereographic projection around selected coordinates:
+
+```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=stere +lon_0=-119 +lat_0=36 +lat_ts=36' ne_110m_admin_0_countries_stere.gpkg natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
 
