@@ -60,7 +60,7 @@ Band 3 Block=1024x2 Type=Byte, ColorInterp=Blue
 Band 4 Block=1024x2 Type=Byte, ColorInterp=Alpha
 </pre>
 
-### 1.2 Convert data formats
+### 1.2 Convert data
 
 Converting from GeoTIFF to VRT:
 
@@ -460,7 +460,7 @@ NAME_VI: String (56.0)
 NAME_ZH: String (33.0)
 </pre>
 
-### 2.2 Convert data formats
+### 2.2 Convert data
 
 Converting dataset from SHP to GPKG with UTF encoding:
 
@@ -476,13 +476,13 @@ Converting from GPKG to PostgreSQL/PostGIS database layer and promoting from pol
 
 ```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d world -f -```
 
+Export vector layer as SVG:
+
+```ogrinfo -sql 'SELECT AsSVG(geom,1) FROM ne_110m_admin_0_countries' natural_earth_vector.gpkg```
+
 Polygonizing raster:
 
 ```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
-
-Export vector layer as SVG:
-
-ogrinfo -sql 'SELECT AsSVG(geom,1) FROM ne_110m_admin_0_countries' natural_earth_vector.gpkg
 
 ### 2.3 Transform coordinates
 
