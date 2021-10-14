@@ -60,7 +60,7 @@ Band 3 Block=1024x2 Type=Byte, ColorInterp=Blue
 Band 4 Block=1024x2 Type=Byte, ColorInterp=Alpha
 </pre>
 
-### 1.2 Convert data
+### 1.2 Convert raster data
 
 Converting from GeoTIFF to VRT:
 
@@ -90,7 +90,7 @@ Gridding point layer given output size and extent:
 
 ```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
 
-Creating a mosaic layer from two or more raster images:
+Making mosaic layer from two or more raster images:
 
 ```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
 
@@ -150,23 +150,23 @@ Clipping to vector features selected by SQL:
 
 ```gdalwarp -overwrite -dstalpha -crop_to_cutline -cutline 'natural_earth_vector.gpkg' -csql 'SELECT geom FROM ne_110m_ocean' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_clipped.tif```
 
-Creating empty raster with same size and resolution as another:
+Making empty raster with same size and resolution as another:
 
 ```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_empty.tif --calc="0"```
+
+Making raster mask by setting values greater than 0 to 1:
+
+```gdal_calc.py --overwrite --type=Int16 --NoDataValue=0 -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_mask.tif --calc="1*(A>0)"```
+
+Making raster mask by keeping values greater than 0:
+
+```gdal_calc.py --overwrite --NoDataValue=0 -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_nulled.tif --calc="A*(A>0)"```
 
 Clipping to raster mask:
 
 ```gdal_calc.py -A HYP_HR_SR_OB_DR_1024_512.tif -B HYP_HR_SR_OB_DR_1024_512_mask.tif --outfile="HYP_HR_SR_OB_DR_1024_512_clipped.tif" --overwrite --type=Float32 --NoDataValue=0 --calc="A*(B>0)"```
 
-Creating raster mask by setting values greater than 0 to 1:
-
-```gdal_calc.py --overwrite --type=Int16 --NoDataValue=0 -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_mask.tif --calc="1*(A>0)"```
-
-Creating raster mask by keeping values greater than 0:
-
-```gdal_calc.py --overwrite --NoDataValue=0 -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_nulled.tif --calc="A*(A>0)"```
-
-Using logical operator to keep values greater than 100 and less than 150:
+Selecting values greater than 100 and less than 150:
 
 ```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_100_150.tif --calc="A*logical_and(A>100,A<150)"```
 
@@ -460,7 +460,7 @@ NAME_VI: String (56.0)
 NAME_ZH: String (33.0)
 </pre>
 
-### 2.2 Convert data
+### 2.2 Convert vector data
 
 Converting dataset from SHP to GPKG with UTF encoding:
 
@@ -476,13 +476,17 @@ Converting from GPKG to PostgreSQL/PostGIS database layer and promoting from pol
 
 ```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d world -f -```
 
-Export vector layer as SVG:
+Exporting vector layer as SVG:
 
 ```ogrinfo -sql 'SELECT AsSVG(geom,1) FROM ne_110m_admin_0_countries' natural_earth_vector.gpkg```
 
 Polygonizing raster:
 
 ```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
+
+Making contours from raster:
+
+```gdal_contour -f "GPKG" -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
 
 ### 2.3 Transform coordinates
 
