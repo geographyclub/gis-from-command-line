@@ -490,9 +490,11 @@ Polygonizing raster:
 
 ```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
 
-Making contours from raster:
+Making contour lines or polygons from raster:
 
 ```gdal_contour -f "GPKG" -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
+
+```gdal_contour -p -f "GPKG" -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
 
 ### 2.3 Transform coordinates
 
@@ -519,5 +521,17 @@ Exporting clip or spatial query:
 ```ogr2ogr -overwrite -clipsrc -94 54 -82 42 natural_earth_vector_clip.gpkg natural_earth_vector.gpkg```
 
 ```ogr2ogr -overwrite -spat -180 -80 180 80 natural_earth_vector_spat.gpkg natural_earth_vector.gpkg```
+
+Exporting features with logical operators:
+
+```ogr2ogr -overwrite -sql 'SELECT * FROM ne_110m_admin_0_countries WHERE area >= 1000000' -nln largecountries natural_earth_vector_largecountries.gpkg natural_earth_vector.gpkg```
+
+```ogr2ogr -overwrite -sql 'SELECT * FROM ne_110m_admin_0_countries WHERE name LIKE 'A%'' -nln acountries natural_earth_vector_acountries.gpkg natural_earth_vector.gpkg```
+
+```ogr2ogr -overwrite -sql 'SELECT * FROM ne_110m_admin_0_countries WHERE name IN ('North Korea','South Korea')' -nln korea natural_earth_vector_korea.gpkg natural_earth_vector.gpkg```
+
+Exporting features after operating on values:
+
+```ogr2ogr -overwrite -sql 'SELECT name, ROUND(area/1000) AS area_km FROM ne_110m_admin_0_countries' -nln countries natural_earth_vector_largecountries.gpkg natural_earth_vector.gpkg```
 
 
