@@ -476,6 +476,12 @@ Converting from GPKG to PostgreSQL/PostGIS database layer and promoting from pol
 
 ```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d world -f -```
 
+Adding M or Z field to dataset:
+
+```ogr2ogr -overwrite -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10```
+
+```ogr2ogr -overwrite -f 'GPKG' -dim XYZ -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xyz.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10```
+
 Exporting vector layer as SVG:
 
 ```ogrinfo -sql 'SELECT AsSVG(geom,1) FROM ne_110m_admin_0_countries' natural_earth_vector.gpkg```
