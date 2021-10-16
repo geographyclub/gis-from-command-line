@@ -470,7 +470,7 @@ Converting from GPKG to SQLite/Spatialite database layer:
 
 ```ogr2ogr -overwrite -f 'SQLite' -dsco SPATIALITE=YES natural_earth_vector.sqlite natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
-Converting from GPKG to PostgreSQL/PostGIS database layer and promoting from polygon to multipolygon:
+Two ways of converting from GPKG to PostgreSQL/PostGIS database layer and promoting from polygon to multipolygon:
 
 ```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=world -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
