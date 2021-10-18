@@ -468,7 +468,7 @@ Converting dataset from SHP to GPKG with UTF encoding:
 
 Converting from CSV to GeoJSON:
 
-ogr2ogr -overwrite -f 'GeoJSON' -oo X_POSSIBLE_NAMES=longitude -oo Y_POSSIBLE_NAMES=latitude -nln metars metars.geojson metars.cache.csv
+```ogr2ogr -overwrite -f 'GeoJSON' -oo X_POSSIBLE_NAMES=longitude -oo Y_POSSIBLE_NAMES=latitude -nln metars metars.geojson metars.cache.csv```
 
 Converting from GPKG to SQLite/Spatialite database layer:
 
