@@ -466,6 +466,10 @@ Converting dataset from SHP to GPKG with UTF encoding:
 
 ```ogr2ogr -overwrite -lco ENCODING=UTF-8 natural_earth_vector.gpkg natural_earth_vector.shp```
 
+Converting from CSV to GeoJSON:
+
+ogr2ogr -overwrite -f 'GeoJSON' -oo X_POSSIBLE_NAMES=longitude -oo Y_POSSIBLE_NAMES=latitude -nln metars metars.geojson metars.cache.csv
+
 Converting from GPKG to SQLite/Spatialite database layer:
 
 ```ogr2ogr -overwrite -f 'SQLite' -dsco SPATIALITE=YES natural_earth_vector.sqlite natural_earth_vector.gpkg ne_110m_admin_0_countries```
