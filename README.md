@@ -224,10 +224,10 @@ Exporting features after operating on values:
 
 ```ogr2ogr -overwrite -sql 'SELECT name, ROUND(area/1000) AS area_km FROM ne_110m_admin_0_countries' -nln countries natural_earth_vector_largecountries.gpkg natural_earth_vector.gpkg```
 
-## 1. POSTGRESQL / POSTGIS
+## 3. POSTGRESQL / POSTGIS
 
 PostGIS is a spatial database extender for PostgreSQL object-relational database. It adds support for geographic objects allowing location queries to be run in SQL.
 
-### 1.1 Import data
+### 3.1 Import data
 
 
