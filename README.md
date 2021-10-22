@@ -20,10 +20,6 @@ Converting from GeoTIFF to VRT:
 
 ```gdal_translate -if 'GTiff' -of 'VRT' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512.vrt```
 
-Converting from GeoTIFF to PostgreSQL/PostGIS database layer:
-
-```raster2pgsql -d -s 4326 -I -C -M HYP_HR_SR_OB_DR_1024_512.tif -F -t auto HYP_HR_SR_OB_DR_1024_512 | psql -d world```
-
 Converting from GeoTIFF to regular TIFF:
 
 ```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512.tif```
@@ -160,12 +156,6 @@ Converting from GPKG to SQLite/Spatialite database layer:
 
 ```ogr2ogr -overwrite -f 'SQLite' -dsco SPATIALITE=YES natural_earth_vector.sqlite natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
-Two ways of converting from GPKG to PostgreSQL/PostGIS database layer and promoting from polygon to multipolygon:
-
-```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=world -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries natural_earth_vector.gpkg ne_110m_admin_0_countries```
-
-```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d world -f -```
-
 Adding M or Z field to dataset:
 
 ```ogr2ogr -overwrite -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10```
@@ -230,4 +220,16 @@ PostGIS is a spatial database extender for PostgreSQL object-relational database
 
 ### 3.1 Import data
 
+Importing CSV file:
 
+```psql -d world -c "COPY geonames FROM 'allCountries.tsv' DELIMITER E'\t' CSV HEADER;"```
+
+Importing GDAL raster:
+
+```raster2pgsql -d -s 4326 -I -C -M HYP_HR_SR_OB_DR_1024_512.tif -F -t auto HYP_HR_SR_OB_DR_1024_512 | psql -d world```
+
+Two ways of importing OGR layer:
+
+```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=world -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries natural_earth_vector.gpkg ne_110m_admin_0_countries```
+
+```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d world -f -```
