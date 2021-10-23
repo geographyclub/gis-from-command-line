@@ -230,6 +230,6 @@ Importing GDAL raster:
 
 Two ways of importing OGR layer:
 
-```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=dbname -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries natural_earth_vector.gpkg ne_110m_admin_0_countries```
+```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=dbname -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries110m natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
-```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d dbname -f -```
+```ogr2ogr -f PGDump --config PG_USE_COPY YES -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries110m /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d dbname -f -```
