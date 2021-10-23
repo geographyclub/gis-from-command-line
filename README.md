@@ -222,14 +222,14 @@ PostGIS is a spatial database extender for PostgreSQL object-relational database
 
 Importing CSV file:
 
-```psql -d world -c "COPY geonames FROM 'allCountries.tsv' DELIMITER E'\t' CSV HEADER;"```
+```psql -d dbname -c "COPY geonames FROM 'allCountries.tsv' DELIMITER E'\t' CSV HEADER;"```
 
 Importing GDAL raster:
 
-```raster2pgsql -d -s 4326 -I -C -M HYP_HR_SR_OB_DR_1024_512.tif -F -t auto HYP_HR_SR_OB_DR_1024_512 | psql -d world```
+```raster2pgsql -d -s 4326 -I -C -M HYP_HR_SR_OB_DR_1024_512.tif -F -t auto HYP_HR_SR_OB_DR_1024_512 | psql -d dbname```
 
 Two ways of importing OGR layer:
 
-```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=world -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries natural_earth_vector.gpkg ne_110m_admin_0_countries```
+```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=dbname -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
-```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d world -f -```
+```ogr2ogr -f PGDump -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries --config PG_USE_COPY YES /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d dbname -f -```
