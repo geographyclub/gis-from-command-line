@@ -236,14 +236,33 @@ Two ways of importing OGR layer:
 
 ### 3.2 Export data
 
-Exporting to SQLite database:
+Exporting table to SQLite database:
 
 ```ogr2ogr -overwrite -f 'SQLite' -dsco SPATIALITE=YES avh.sqlite PG:dbname=dbname avh```
 
-Exporting to CSV with header:
+Exporting query to CSV file:
 
 ```psql -d dbname -c "\COPY (SELECT * FROM places10m) TO STDOUT WITH CSV HEADER DELIMITER E'\t'" > places.csv```
 
 Exporting region with `ST_MakeEnvelope`:
 
-```ogr2ogr -overwrite -f 'SQLite' -sql "SELECT a.featurecode_name, a.featureclass, (SELECT b.geom FROM contour10m_segments1_5 AS b ORDER BY b.geom <-> ST_GeometryN(ST_Collect(a.geom),1) LIMIT 1) FROM allcountries AS a WHERE a.geom && ST_MakeEnvelope(-123,41,-111,51) AND a.featureclass IN ('T','H','U','V') GROUP BY a.featurecode_name, a.featureclass" /home/steve/Projects/maps/dem/topo15/gbif_bc.sqlite -nln geonames -nlt LINESTRING PG:"dbname=topo15"```
+```ogr2ogr -overwrite -f 'GPKG' -sql "SELECT * FROM gbif WHERE geom && ST_MakeEnvelope(-123,41,-111,51)" -nlt POINT -nln gbif gbif.gpkg PG:dbname=dbname```
+
+### 3.3 Create table
+
+Adding or designating index field:
+
+```psql -d dbname -c "ALTER TABLE ecoregion ADD COLUMN fid serial primary key;"```
+
+```psql -d dbname -c "ALTER TABLE places ADD PRIMARY KEY (fid);"```
+
+Adding and updating geometry field:
+
+```psql -d dbname -c "ALTER TABLE contour100m ADD COLUMN geom TYPE GEOMETRY(MULTILINESTRING, 4326);"```
+
+```psql -d dbname -c "UPDATE contour100m SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
+
+Adding geometry index field:
+
+```psql -d dbname -c "CREATE INDEX contour100m_gid ON contour100m USING GIST (geom);"```
+
