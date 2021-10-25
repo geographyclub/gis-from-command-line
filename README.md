@@ -84,9 +84,9 @@ Smoothing DEM by scaling down then scaling up by the same factor:
 
 Using different resampling methods:
 
-```gdalwarp -overwrite -ts 4000 0 -r near -t_srs "EPSG:4326" HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_near.tif```
+```gdalwarp -overwrite -ts 4000 0 -r near -t_srs 'EPSG:4326' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_near.tif```
 
-```gdalwarp -overwrite -ts 4000 0 -r cubicspline -t_srs "EPSG:4326" HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_cubicspline.tif```
+```gdalwarp -overwrite -ts 4000 0 -r cubicspline -t_srs 'EPSG:4326' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_cubicspline.tif```
 
 ### 1.5 Select raster data
 
@@ -172,9 +172,9 @@ Polygonizing raster:
 
 Making contour lines or polygons from raster:
 
-```gdal_contour -f "GPKG" -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
+```gdal_contour -f 'GPKG' -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
 
-```gdal_contour -p -f "GPKG" -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
+```gdal_contour -p -f 'GPKG' -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
 
 ### 2.3 Transform coordinates
 
