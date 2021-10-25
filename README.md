@@ -238,9 +238,12 @@ Two ways of importing OGR layer:
 
 Exporting to SQLite database:
 
-```ogr2ogr -overwrite -f "SQLite" -dsco SPATIALITE=YES avh.sqlite PG:dbname=dbname avh```
+```ogr2ogr -overwrite -f 'SQLite' -dsco SPATIALITE=YES avh.sqlite PG:dbname=dbname avh```
 
-Exporting to csv with psql:
+Exporting to CSV with header:
 
-```psql -d dbname -c "\COPY (SELECT * FROM places10m) TO STDOUT DELIMITER E'\t'" > places.csv```
+```psql -d dbname -c "\COPY (SELECT * FROM places10m) TO STDOUT WITH CSV HEADER DELIMITER E'\t'" > places.csv```
 
+Exporting region with `ST_MakeEnvelope`:
+
+```ogr2ogr -overwrite -f 'SQLite' -sql "SELECT a.featurecode_name, a.featureclass, (SELECT b.geom FROM contour10m_segments1_5 AS b ORDER BY b.geom <-> ST_GeometryN(ST_Collect(a.geom),1) LIMIT 1) FROM allcountries AS a WHERE a.geom && ST_MakeEnvelope(-123,41,-111,51) AND a.featureclass IN ('T','H','U','V') GROUP BY a.featurecode_name, a.featureclass" /home/steve/Projects/maps/dem/topo15/gbif_bc.sqlite -nln geonames -nlt LINESTRING PG:"dbname=topo15"```
