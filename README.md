@@ -233,3 +233,14 @@ Two ways of importing OGR layer:
 ```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=dbname -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries110m natural_earth_vector.gpkg ne_110m_admin_0_countries```
 
 ```ogr2ogr -f PGDump --config PG_USE_COPY YES -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries110m /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d dbname -f -```
+
+### 3.2 Export data
+
+Exporting to SQLite database:
+
+```ogr2ogr -overwrite -f "SQLite" -dsco SPATIALITE=YES avh.sqlite PG:dbname=dbname avh```
+
+Exporting to csv with psql:
+
+```psql -d dbname -c "\COPY (SELECT * FROM places10m) TO STDOUT DELIMITER E'\t'" > places.csv```
+
