@@ -48,7 +48,7 @@ Piping `gdal_translate` to `gdalwarp` to georeference and transform an image in 
 
 ```gdal_translate -of 'GTiff' -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -f 'GTiff' -of 'GTiff' -t_srs 'EPSG:4326' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif```
 
-### 1.4 Rescale raster
+### 1.4 Process raster data
 
 Rescaling to output pixel resolution:
 
@@ -67,8 +67,6 @@ Using different resampling methods:
 ```gdalwarp -overwrite -ts 4000 0 -r near -t_srs 'EPSG:4326' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_near.tif```
 
 ```gdalwarp -overwrite -ts 4000 0 -r cubicspline -t_srs 'EPSG:4326' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_cubicspline.tif```
-
-### 1.5 Process raster data
 
 Georeferencing image by extent:
 
