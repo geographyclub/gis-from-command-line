@@ -226,13 +226,13 @@ Importing CSV file:
 
 Creating table and importing CSV with geometry:
 
-```psql -d dbname -c "CREATE TABLE metar(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
+1. ```psql -d dbname -c "CREATE TABLE metar(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
 
-```psql -d dbname -c "COPY metar FROM 'metar.cache.csv' DELIMITER ',' CSV HEADER;"```
+2. ```psql -d dbname -c "COPY metar FROM 'metar.cache.csv' DELIMITER ',' CSV HEADER;"```
 
-```psql -d dbname -c "SELECT AddGeometryColumn('metar', 'geom', 4326, 'POINT', 2);"```
+3. ```psql -d dbname -c "SELECT AddGeometryColumn('metar', 'geom', 4326, 'POINT', 2);"```
 
-```psql -d dbname -c "UPDATE metar SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
+4. ```psql -d dbname -c "UPDATE metar SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
 
 Importing GDAL raster:
 
