@@ -227,8 +227,11 @@ Importing CSV file:
 Creating table and importing CSV:
 
 ```psql -d metar -c "CREATE TABLE ${mytable}(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
+
 ```psql -d metar -c "COPY ${mytable} FROM '${file}' DELIMITER ',' CSV HEADER;"```
+
 ```psql -d metar -c "SELECT AddGeometryColumn('${mytable}','geom',4326,'POINT',2);"```
+
 ```psql -d metar -c "UPDATE ${mytable} SET geom = ST_SetSRID(ST_MakePoint(lon,lat),4326);"```
 
 Importing GDAL raster:
