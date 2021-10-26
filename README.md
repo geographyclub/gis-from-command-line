@@ -88,7 +88,7 @@ Using different resampling methods:
 
 ```gdalwarp -overwrite -ts 4000 0 -r cubicspline -t_srs 'EPSG:4326' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_cubicspline.tif```
 
-### 1.5 Select raster data
+### 1.5 Process raster data
 
 Clipping to bounding box using `gdalwarp` or `gdal_translate`:
 
@@ -194,7 +194,7 @@ Shifting prime meridian from 0° to 180°:
 
 ```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over' countries_110m_180pm.gpkg countries_110m.gpkg```
 
-### 2.4 Select vector data
+### 2.4 Process vector data
 
 Exporting clip or spatial query:
 
@@ -224,15 +224,15 @@ Importing CSV file:
 
 ```psql -d dbname -c "COPY geonames FROM 'allCountries.tsv' DELIMITER E'\t' CSV HEADER;"```
 
-Creating table and importing CSV:
+Creating table and importing CSV with geometry:
 
-```psql -d metar -c "CREATE TABLE ${mytable}(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
+```psql -d dbname -c "CREATE TABLE metar(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
 
-```psql -d metar -c "COPY ${mytable} FROM '${file}' DELIMITER ',' CSV HEADER;"```
+```psql -d dbname -c "COPY metar FROM 'metar.cache.csv' DELIMITER ',' CSV HEADER;"```
 
-```psql -d metar -c "SELECT AddGeometryColumn('${mytable}','geom',4326,'POINT',2);"```
+```psql -d dbname -c "SELECT AddGeometryColumn('metar', 'geom', 4326, 'POINT', 2);"```
 
-```psql -d metar -c "UPDATE ${mytable} SET geom = ST_SetSRID(ST_MakePoint(lon,lat),4326);"```
+```psql -d dbname -c "UPDATE metar SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
 
 Importing GDAL raster:
 
@@ -254,9 +254,13 @@ Exporting query to CSV file:
 
 ```psql -d dbname -c "\COPY (SELECT * FROM places10m) TO STDOUT WITH CSV HEADER DELIMITER E'\t'" > places.csv```
 
+Exporting query with JSON and HTML tags:
+
+```psql -d world -c "\COPY (SELECT '<p>' || ROW_TO_JSON(t) || '</p>' FROM (SELECT a.nameascii, b.station_id, b.temp, b.wind_sp, b.sky FROM places a, metar b WHERE a.metar_id = b.station_id) t) TO STDOUT;" >> $PWD/data/datastream.html;```
+
 Exporting region with `ST_MakeEnvelope`:
 
-```ogr2ogr -overwrite -f 'GPKG' -sql "SELECT * FROM gbif WHERE geom && ST_MakeEnvelope(-123,41,-111,51)" -nlt POINT -nln gbif gbif.gpkg PG:dbname=dbname```
+```ogr2ogr -overwrite -f 'GPKG' -sql "SELECT * FROM gbif WHERE geom && ST_MakeEnvelope(-123, 41, -111, 51)" -nlt POINT -nln gbif gbif.gpkg PG:dbname=dbname```
 
 ### 3.3 Alter table
 
@@ -277,3 +281,5 @@ Adding geometry index field:
 ```psql -d dbname -c "CREATE INDEX contour100m_gid ON contour100m USING GIST (geom);"```
 
 
+
+### 3.4 Process data
