@@ -250,6 +250,27 @@ Exporting region with `ST_MakeEnvelope`:
 
 ### 3.3 Create table
 
+Creating table and importing data:
+
+```psql -d metar -c "CREATE TABLE ${mytable}(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
+```psql -d metar -c "COPY ${mytable} FROM '${file}' DELIMITER ',' CSV HEADER;"```
+```psql -d metar -c "SELECT AddGeometryColumn('${mytable}','geom',4326,'POINT',2);"```
+```psql -d metar -c "UPDATE ${mytable} SET geom = ST_SetSRID(ST_MakePoint(lon,lat),4326);"```
+
+Making bounds:
+
+psql -d dbname -c "CREATE TABLE osm AS SELECT ST_Extent(way) FROM planet_osm_polygon;"
+
+psql -d dbname -c "CREATE TABLE osm AS SELECT ST_Envelope(ST_Collect(GEOMETRY)) FROM contour10;"
+
+psql -d dbname -c "CREATE TABLE osm AS SELECT ST_ExteriorRing(ST_Envelope(ST_Collect(GEOMETRY))) FROM contour10;"
+
+
+
+
+
+### 3.4 Alter table
+
 Adding or designating index field:
 
 ```psql -d dbname -c "ALTER TABLE ecoregion ADD COLUMN fid serial primary key;"```
@@ -265,4 +286,5 @@ Adding and updating geometry field:
 Adding geometry index field:
 
 ```psql -d dbname -c "CREATE INDEX contour100m_gid ON contour100m USING GIST (geom);"```
+
 
