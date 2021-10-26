@@ -182,9 +182,7 @@ Shifting prime meridian from 0° to 180°:
 
 Adding M or Z field to dataset:
 
-```ogr2ogr -overwrite -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10```
-
-```ogr2ogr -overwrite -f 'GPKG' -dim XYZ -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xyz.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10```
+```ogr2ogr -overwrite -f 'GPKG' -dim XYZ -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10```
 
 Polygonizing raster:
 
@@ -256,7 +254,7 @@ Exporting query to CSV file:
 
 Exporting query with JSON and HTML tags:
 
-```psql -d world -c "\COPY (SELECT '<p>' || ROW_TO_JSON(t) || '</p>' FROM (SELECT a.nameascii, b.station_id, b.temp, b.wind_sp, b.sky FROM places a, metar b WHERE a.metar_id = b.station_id) t) TO STDOUT;" >> $PWD/data/datastream.html;```
+```psql -d dbname -c "\COPY (SELECT '<p>' || ROW_TO_JSON(t) || '</p>' FROM (SELECT a.nameascii, b.station_id, b.temp, b.wind_sp, b.sky FROM places a, metar b WHERE a.metar_id = b.station_id) t) TO STDOUT;" >> $PWD/data/datastream.html;```
 
 Exporting region with `ST_MakeEnvelope`:
 
