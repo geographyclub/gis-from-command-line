@@ -272,14 +272,19 @@ Adding or designating index field:
 
 Adding and updating geometry field:
 
-```psql -d dbname -c "ALTER TABLE contour100m ADD COLUMN geom TYPE GEOMETRY(MULTILINESTRING, 4326);"```
+1. ```psql -d dbname -c "ALTER TABLE contour100m ADD COLUMN geom TYPE GEOMETRY(MULTILINESTRING, 4326);"```
 
-```psql -d dbname -c "UPDATE contour100m SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
+2. ```psql -d dbname -c "UPDATE contour100m SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
 
 Adding geometry index field:
 
 ```psql -d dbname -c "CREATE INDEX contour100m_gid ON contour100m USING GIST (geom);"```
 
+Changing geometry to general or specific type:
+
+```psql -d dbname -c "ALTER TABLE urbanareas_3857 ALTER COLUMN geom type geometry;"```
+
+```psql -d dbname -c "ALTER TABLE ecoregions_line1 ALTER COLUMN geom type geometry(LineString, 4326);"```
 
 
 ### 3.4 Process data
