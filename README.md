@@ -224,6 +224,13 @@ Importing CSV file:
 
 ```psql -d dbname -c "COPY geonames FROM 'allCountries.tsv' DELIMITER E'\t' CSV HEADER;"```
 
+Creating table and importing CSV:
+
+```psql -d metar -c "CREATE TABLE ${mytable}(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
+```psql -d metar -c "COPY ${mytable} FROM '${file}' DELIMITER ',' CSV HEADER;"```
+```psql -d metar -c "SELECT AddGeometryColumn('${mytable}','geom',4326,'POINT',2);"```
+```psql -d metar -c "UPDATE ${mytable} SET geom = ST_SetSRID(ST_MakePoint(lon,lat),4326);"```
+
 Importing GDAL raster:
 
 ```raster2pgsql -d -s 4326 -I -C -M HYP_HR_SR_OB_DR_1024_512.tif -F -t auto HYP_HR_SR_OB_DR_1024_512 | psql -d dbname```
@@ -248,28 +255,7 @@ Exporting region with `ST_MakeEnvelope`:
 
 ```ogr2ogr -overwrite -f 'GPKG' -sql "SELECT * FROM gbif WHERE geom && ST_MakeEnvelope(-123,41,-111,51)" -nlt POINT -nln gbif gbif.gpkg PG:dbname=dbname```
 
-### 3.3 Create table
-
-Creating table and importing data:
-
-```psql -d metar -c "CREATE TABLE ${mytable}(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
-```psql -d metar -c "COPY ${mytable} FROM '${file}' DELIMITER ',' CSV HEADER;"```
-```psql -d metar -c "SELECT AddGeometryColumn('${mytable}','geom',4326,'POINT',2);"```
-```psql -d metar -c "UPDATE ${mytable} SET geom = ST_SetSRID(ST_MakePoint(lon,lat),4326);"```
-
-Making bounds:
-
-psql -d dbname -c "CREATE TABLE osm AS SELECT ST_Extent(way) FROM planet_osm_polygon;"
-
-psql -d dbname -c "CREATE TABLE osm AS SELECT ST_Envelope(ST_Collect(GEOMETRY)) FROM contour10;"
-
-psql -d dbname -c "CREATE TABLE osm AS SELECT ST_ExteriorRing(ST_Envelope(ST_Collect(GEOMETRY))) FROM contour10;"
-
-
-
-
-
-### 3.4 Alter table
+### 3.3 Alter table
 
 Adding or designating index field:
 
