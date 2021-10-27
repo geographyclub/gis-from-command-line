@@ -289,15 +289,14 @@ Adding geometry index:
 Adding and updating geometry:
 
 1. ```psql -d dbname -c "ALTER TABLE contour100m ADD COLUMN geom TYPE GEOMETRY(MULTILINESTRING, 4326);"```
-
 2. ```psql -d dbname -c "UPDATE contour100m SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
 
 Reprojecting geometry with spatial filter:
 
-psql -d dbname -c "ALTER TABLE urbanareas_3857 ALTER COLUMN geom type geometry;
-UPDATE urbanareas_3857 SET geom = ST_Intersection(ST_MakeEnvelope(-179, -89, 179, 89, 4326),geom);
-SELECT UpdateGeometrySRID('hydroriver_simple_3857', 'shape', 3857);
-UPDATE hydroriver_simple_3857 SET shape = ST_Transform(ST_SetSRID(shape,4326),3857);
+1. psql -d dbname -c "ALTER TABLE urbanareas_3857 ALTER COLUMN geom type geometry;"```
+2. psql -d dbname -c "UPDATE urbanareas_3857 SET geom = ST_Intersection(ST_MakeEnvelope(-179, -89, 179, 89, 4326),geom);"```
+3. psql -d dbname -c "SELECT UpdateGeometrySRID('hydroriver_simple_3857', 'shape', 3857);"```
+4. psql -d dbname -c "UPDATE hydroriver_simple_3857 SET shape = ST_Transform(ST_SetSRID(shape,4326),3857);"```
 
 ### 3.6 Spatial queries
 
