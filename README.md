@@ -24,6 +24,22 @@ Converting from GeoTIFF to regular TIFF:
 
 ```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512.tif```
 
+Rasterizing selected vector features given pixel resolution:
+
+```gdal_rasterize -at -tr 0.3 0.3 -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR_1024_512.gpkg HYP_HR_SR_OB_DR_1024_512.tif```
+
+Gridding point layer given output size and extent:
+
+```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
+
+Making mosaic layer from two or more raster images:
+
+```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
+
+Coloring and reprojecting GRIB in one step:
+
+```gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' tcdc.tif "white-black.txt" /vsistdout/ | gdalwarp -overwrite -dstalpha -f 'GTiff' -of 'GTiff' -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -ts 500 250 /vsistdin/ tcdc_color.tif```
+
 ### 1.3 Transform coordinates
 
 Using EPSG code to transform from lat-long to Web Mercator projection:
@@ -44,7 +60,15 @@ Shifting prime meridian on a 0-360° raster and a -180-180° raster:
 
 ```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_180pm.tif```
 
-Piping `gdal_translate` to `gdalwarp` to georeference and transform an image in one step:
+Georeferencing image by extent:
+
+```gdal_translate -of 'GTiff' -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
+
+Georeferencing image by ground control points:
+
+```gdal_translate -of 'GTiff' -gcp 0 0 -180 -90 -gcp 1024 512 180 90 -gcp 0 512 -180 90 -gcp 1024 0 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
+
+Georeferencing and transforming an image in one step:
 
 ```gdal_translate -of 'GTiff' -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -f 'GTiff' -of 'GTiff' -t_srs 'EPSG:4326' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif```
 
@@ -67,26 +91,6 @@ Using different resampling methods:
 ```gdalwarp -overwrite -ts 4000 0 -r near -t_srs 'EPSG:4326' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_near.tif```
 
 ```gdalwarp -overwrite -ts 4000 0 -r cubicspline -t_srs 'EPSG:4326' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_cubicspline.tif```
-
-Georeferencing image by extent:
-
-```gdal_translate -of 'GTiff' -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
-
-Georeferencing image by ground control points:
-
-```gdal_translate -of 'GTiff' -gcp 0 0 -180 -90 -gcp 1024 512 180 90 -gcp 0 512 -180 90 -gcp 1024 0 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
-
-Rasterizing selected vector features given pixel resolution:
-
-```gdal_rasterize -at -tr 0.3 0.3 -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR_1024_512.gpkg HYP_HR_SR_OB_DR_1024_512.tif```
-
-Gridding point layer given output size and extent:
-
-```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
-
-Making mosaic layer from two or more raster images:
-
-```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
 
 Clipping to bounding box using `gdalwarp` or `gdal_translate`:
 
@@ -158,6 +162,16 @@ Exporting vector layer as SVG:
 
 ```ogrinfo -sql 'SELECT AsSVG(geom,1) FROM ne_110m_admin_0_countries' natural_earth_vector.gpkg```
 
+Polygonizing raster:
+
+```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
+
+Making contour lines or polygons from raster:
+
+```gdal_contour -f 'GPKG' -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
+
+```gdal_contour -p -f 'GPKG' -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
+
 ### 2.3 Transform coordinates
 
 Transforming from lat-long to azimuthal equidistant projection with spatial query:
@@ -181,16 +195,6 @@ Shifting prime meridian from 0° to 180°:
 Adding M or Z field to dataset:
 
 ```ogr2ogr -overwrite -f 'GPKG' -dim XYZ -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10```
-
-Polygonizing raster:
-
-```gdal_polygonize.py -8 -f 'GPKG' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_polygons.gpkg```
-
-Making contour lines or polygons from raster:
-
-```gdal_contour -f 'GPKG' -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
-
-```gdal_contour -p -f 'GPKG' -a 'elevation' -i 100 topo15_4000_40000.tif topo15_4000_40000_100m.gpkg```
 
 Exporting clip or spatial query:
 
