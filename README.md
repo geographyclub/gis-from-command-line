@@ -36,10 +36,6 @@ Making mosaic layer from two or more raster images:
 
 ```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
 
-Coloring and reprojecting GRIB in one step:
-
-```gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' tcdc.tif "white-black.txt" /vsistdout/ | gdalwarp -overwrite -dstalpha -f 'GTiff' -of 'GTiff' -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -ts 500 250 /vsistdin/ tcdc_color.tif```
-
 ### 1.3 Transform coordinates
 
 Using EPSG code to transform from lat-long to Web Mercator projection:
@@ -118,17 +114,17 @@ Clipping to raster mask:
 
 ```gdal_calc.py -A HYP_HR_SR_OB_DR_1024_512.tif -B HYP_HR_SR_OB_DR_1024_512_mask.tif --outfile="HYP_HR_SR_OB_DR_1024_512_clipped.tif" --overwrite --type=Float32 --NoDataValue=0 --calc="A*(B>0)"```
 
-Selecting values greater than 100 and less than 150:
-
-```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_100_150.tif --calc="A*logical_and(A>100,A<150)"```
-
-Rounding values to 3 significant digits:
-
-```gdal_calc.py --overwrite --type=Int16 -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_rounded.tif --calc="A*0.001"```
-
 Adding two rasters together where raster A is greater than zero:
 
 ```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif -B HYP_HR_SR_OB_DR_1024_512_B.tif --outfile=HYP_HR_SR_OB_DR_1024_512_A_B.tif --calc="((A>0)*A)+B"```
+
+Using logical operator:
+
+```gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_100_150.tif --calc="A*logical_and(A>100,A<150)"```
+
+Coloring GRIB with `gdaldem` and piping to `gdalwarp`:
+
+```gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' tcdc.tif "white-black.txt" /vsistdout/ | gdalwarp -overwrite -dstalpha -f 'GTiff' -of 'GTiff' -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -ts 500 250 /vsistdin/ tcdc_color.tif```
 
 ## 2. OGR
 
@@ -196,13 +192,13 @@ Adding M or Z field to dataset:
 
 ```ogr2ogr -overwrite -f 'GPKG' -dim XYZ -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10```
 
-Exporting clip or spatial query:
+Using clip or spatial query:
 
 ```ogr2ogr -overwrite -clipsrc -94 54 -82 42 natural_earth_vector_clip.gpkg natural_earth_vector.gpkg```
 
 ```ogr2ogr -overwrite -spat -180 -80 180 80 natural_earth_vector_spat.gpkg natural_earth_vector.gpkg```
 
-Exporting features with logical operators:
+Using logical operators:
 
 ```ogr2ogr -overwrite -sql 'SELECT * FROM ne_110m_admin_0_countries WHERE area >= 1000000' -nln largecountries natural_earth_vector_largecountries.gpkg natural_earth_vector.gpkg```
 
@@ -210,7 +206,7 @@ Exporting features with logical operators:
 
 ```ogr2ogr -overwrite -sql 'SELECT * FROM ne_110m_admin_0_countries WHERE name IN ('North Korea','South Korea')' -nln korea natural_earth_vector_korea.gpkg natural_earth_vector.gpkg```
 
-Exporting features after operating on values:
+Using math functions:
 
 ```ogr2ogr -overwrite -sql 'SELECT name, ROUND(area/1000) AS area_km FROM ne_110m_admin_0_countries' -nln countries natural_earth_vector_largecountries.gpkg natural_earth_vector.gpkg```
 
@@ -270,21 +266,16 @@ Adding or designating index field:
 
 ```psql -d dbname -c "ALTER TABLE places ADD PRIMARY KEY (fid);"```
 
+Adding geometry index field:
+
+```psql -d dbname -c "CREATE INDEX contour100m_gid ON contour100m USING GIST (geom);"```
+
 Adding and updating geometry field:
 
 1. ```psql -d dbname -c "ALTER TABLE contour100m ADD COLUMN geom TYPE GEOMETRY(MULTILINESTRING, 4326);"```
 
 2. ```psql -d dbname -c "UPDATE contour100m SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
 
-Adding geometry index field:
-
-```psql -d dbname -c "CREATE INDEX contour100m_gid ON contour100m USING GIST (geom);"```
-
-Changing geometry to general or specific type:
-
-```psql -d dbname -c "ALTER TABLE urbanareas_3857 ALTER COLUMN geom type geometry;"```
-
-```psql -d dbname -c "ALTER TABLE ecoregions_line1 ALTER COLUMN geom type geometry(LineString, 4326);"```
 
 
 ### 3.4 Process data
