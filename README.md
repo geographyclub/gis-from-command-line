@@ -230,20 +230,6 @@ Printing useful info on table:
 
 ### 3.2 Import data
 
-Importing CSV file:
-
-```psql -d dbname -c "COPY geonames FROM 'allCountries.tsv' DELIMITER E'\t' CSV HEADER;"```
-
-Creating table and importing CSV with geometry:
-
-1. ```psql -d dbname -c "CREATE TABLE metar(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
-
-2. ```psql -d dbname -c "COPY metar FROM 'metar.cache.csv' DELIMITER ',' CSV HEADER;"```
-
-3. ```psql -d dbname -c "SELECT AddGeometryColumn('metar', 'geom', 4326, 'POINT', 2);"```
-
-4. ```psql -d dbname -c "UPDATE metar SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
-
 Importing GDAL raster:
 
 ```raster2pgsql -d -s 4326 -I -C -M HYP_HR_SR_OB_DR_1024_512.tif -F -t auto HYP_HR_SR_OB_DR_1024_512 | psql -d dbname```
@@ -274,6 +260,15 @@ Exporting region with `ST_MakeEnvelope`:
 
 ### 3.4 Create tables
 
+Creating table and importing CSV with geometry:
+
+1. ```psql -d dbname -c "CREATE TABLE metar(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
+
+2. ```psql -d dbname -c "COPY metar FROM 'metar.cache.csv' DELIMITER ',' CSV HEADER;"```
+
+3. ```psql -d dbname -c "SELECT AddGeometryColumn('metar', 'geom', 4326, 'POINT', 2);"```
+
+4. ```psql -d dbname -c "UPDATE metar SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
 
 ### 3.5 Alter tables
 
