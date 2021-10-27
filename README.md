@@ -263,11 +263,8 @@ Exporting region with `ST_MakeEnvelope`:
 Creating table and importing CSV with geometry:
 
 1. ```psql -d dbname -c "CREATE TABLE metar(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
-
 2. ```psql -d dbname -c "COPY metar FROM 'metar.cache.csv' DELIMITER ',' CSV HEADER;"```
-
 3. ```psql -d dbname -c "SELECT AddGeometryColumn('metar', 'geom', 4326, 'POINT', 2);"```
-
 4. ```psql -d dbname -c "UPDATE metar SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
 
 ### 3.5 Alter tables
@@ -293,17 +290,17 @@ Adding and updating geometry:
 
 Reprojecting geometry with spatial filter:
 
-1. psql -d dbname -c "ALTER TABLE urbanareas_3857 ALTER COLUMN geom type geometry;"```
-2. psql -d dbname -c "UPDATE urbanareas_3857 SET geom = ST_Intersection(ST_MakeEnvelope(-179, -89, 179, 89, 4326),geom);"```
-3. psql -d dbname -c "SELECT UpdateGeometrySRID('hydroriver_simple_3857', 'shape', 3857);"```
-4. psql -d dbname -c "UPDATE hydroriver_simple_3857 SET shape = ST_Transform(ST_SetSRID(shape,4326),3857);"```
+1. ```psql -d dbname -c "ALTER TABLE urbanareas_3857 ALTER COLUMN geom type geometry;"```
+2. ```psql -d dbname -c "UPDATE urbanareas_3857 SET geom = ST_Intersection(ST_MakeEnvelope(-179, -89, 179, 89, 4326),geom);"```
+3. ```psql -d dbname -c "SELECT UpdateGeometrySRID('hydroriver_simple_3857', 'shape', 3857);"```
+4. ```psql -d dbname -c "UPDATE hydroriver_simple_3857 SET shape = ST_Transform(ST_SetSRID(shape,4326),3857);"```
 
 ### 3.6 Spatial queries
 
 Joining tables (inner):
 
-UPDATE geonames a SET localname = b.alternatename FROM alternatenames b WHERE a.geonameid = b.geonameid AND a.languagename = b.isolanguage;
+```psql -d dbname -c "UPDATE geonames a SET localname = b.alternatename FROM alternatenames b WHERE a.geonameid = b.geonameid AND a.languagename = b.isolanguage;"```
 
 Joining tables (cross):
 
-SELECT a.geom, a.vname_en, a.datasetkey, a.kingdom, a.phylum, a.class, a.order, a.family, a.genus, a.species, a.scientificname, (SELECT CAST(b.fid AS int) AS contourid FROM contour10m_seg1_5 AS b ORDER BY b.geom <-> a.geom LIMIT 1) FROM nmnh AS a WHERE a.geom && ST_MakeEnvelope(${extent})"
+```psql -d dbname -c "SELECT a.geom, a.vname_en, a.datasetkey, a.kingdom, a.phylum, a.class, a.order, a.family, a.genus, a.species, a.scientificname, (SELECT CAST(b.fid AS int) AS contourid FROM contour10m_seg1_5 AS b ORDER BY b.geom <-> a.geom LIMIT 1) FROM nmnh AS a WHERE a.geom && ST_MakeEnvelope(${extent})"```
