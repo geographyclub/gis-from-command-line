@@ -214,7 +214,21 @@ Using math functions:
 
 PostGIS is a spatial database extender for PostgreSQL object-relational database. It adds support for geographic objects allowing location queries to be run in SQL.
 
-### 3.1 Import data
+### 3.1 Print info
+
+Listing all databases:
+
+```psql -d dbname -c "\l"```
+
+Listing tables in database:
+
+```psql -d dbname -c "\dt"```
+
+Printing useful info on table:
+
+```psql -d dbname -c "\d layer"```
+
+### 3.2 Import data
 
 Importing CSV file:
 
@@ -240,7 +254,7 @@ Two ways of importing OGR layer:
 
 ```ogr2ogr -f PGDump --config PG_USE_COPY YES -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries110m /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d dbname -f -```
 
-### 3.2 Export data
+### 3.3 Export data
 
 Exporting table to SQLite database:
 
@@ -258,24 +272,44 @@ Exporting region with `ST_MakeEnvelope`:
 
 ```ogr2ogr -overwrite -f 'GPKG' -sql "SELECT * FROM gbif WHERE geom && ST_MakeEnvelope(-123, 41, -111, 51)" -nlt POINT -nln gbif gbif.gpkg PG:dbname=dbname```
 
-### 3.3 Alter table
+### 3.4 Create tables
 
-Adding or designating index field:
+
+### 3.5 Alter tables
+
+Changing data type:
+
+```psql -d dbname -c "ALTER TABLE limw_points ALTER COLUMN contour100m_id TYPE INT USING contour100m_id::integer;"```
+
+Adding or designating index:
 
 ```psql -d dbname -c "ALTER TABLE ecoregion ADD COLUMN fid serial primary key;"```
 
 ```psql -d dbname -c "ALTER TABLE places ADD PRIMARY KEY (fid);"```
 
-Adding geometry index field:
+Adding geometry index:
 
 ```psql -d dbname -c "CREATE INDEX contour100m_gid ON contour100m USING GIST (geom);"```
 
-Adding and updating geometry field:
+Adding and updating geometry:
 
 1. ```psql -d dbname -c "ALTER TABLE contour100m ADD COLUMN geom TYPE GEOMETRY(MULTILINESTRING, 4326);"```
 
 2. ```psql -d dbname -c "UPDATE contour100m SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
 
+Reprojecting geometry with spatial filter:
 
+psql -d dbname -c "ALTER TABLE urbanareas_3857 ALTER COLUMN geom type geometry;
+UPDATE urbanareas_3857 SET geom = ST_Intersection(ST_MakeEnvelope(-179, -89, 179, 89, 4326),geom);
+SELECT UpdateGeometrySRID('hydroriver_simple_3857', 'shape', 3857);
+UPDATE hydroriver_simple_3857 SET shape = ST_Transform(ST_SetSRID(shape,4326),3857);
 
-### 3.4 Process data
+### 3.6 Spatial queries
+
+Joining tables (inner):
+
+UPDATE geonames a SET localname = b.alternatename FROM alternatenames b WHERE a.geonameid = b.geonameid AND a.languagename = b.isolanguage;
+
+Joining tables (cross):
+
+SELECT a.geom, a.vname_en, a.datasetkey, a.kingdom, a.phylum, a.class, a.order, a.family, a.genus, a.species, a.scientificname, (SELECT CAST(b.fid AS int) AS contourid FROM contour10m_seg1_5 AS b ORDER BY b.geom <-> a.geom LIMIT 1) FROM nmnh AS a WHERE a.geom && ST_MakeEnvelope(${extent})"
