@@ -26,7 +26,11 @@ Converting from GeoTIFF to regular TIFF:
 
 Rasterizing selected vector features given pixel resolution:
 
-```gdal_rasterize -at -tr 0.3 0.3 -l layername -a attribute -where "attribute IS NOT NULL" HYP_HR_SR_OB_DR_1024_512.gpkg HYP_HR_SR_OB_DR_1024_512.tif```
+```gdal_rasterize -tr 1 1 -ts 1024 512 -a_nodata 0 -burn 1 -l ne_10m_land natural_earth_vector.gpkg ne_10m_land.tif```
+
+Rasterized land layer at 1° resolution:
+
+<img src="images/ne_10m_land.jpg" width="400" />
 
 Gridding point layer given output size and extent:
 
