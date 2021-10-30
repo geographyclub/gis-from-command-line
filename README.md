@@ -30,7 +30,7 @@ Rasterizing selected vector features given pixel resolution:
 
 Rasterized land layer at 1° resolution:
 
-<img src="images/ne_10m_land.jpg" width="400" />
+<img src="images/ne_10m_land_raster_1_1.jpg" width="400" />
 
 Gridding point layer given output size and extent:
 
