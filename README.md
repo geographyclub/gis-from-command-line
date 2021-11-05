@@ -74,11 +74,9 @@ Georeferencing and transforming an image in one step:
 
 ### 1.4 Process raster data
 
-Rescaling to output pixel resolution:
+Rescaling to output pixel resolution or raster width:
 
 ```gdalwarp -overwrite -tr 1 1 HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_1xres_1yres.tif```
-
-Rescaling to output raster width:
 
 ```gdalwarp -overwrite -ts 4000 0 HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_4000w.tif```
 
