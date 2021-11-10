@@ -2,7 +2,7 @@
 
 This is my introduction to using open source command-line tools in Linux to make your own *Geographic Information Systems*.
 
-<img src="images/HYP_HR_SR_OB_DR_1024_512.jpg"/>
+<img src="images/HYP_HR_SR_OB_DR_1024_512.jpg" width="400px"/>
 
 ## 1. GDAL
 
