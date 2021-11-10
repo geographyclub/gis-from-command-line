@@ -30,7 +30,7 @@ Rasterizing selected vector features given pixel resolution:
 
 Rasterized land layer at 1° resolution:
 
-<img src="images/NAME_Vietnam_raster1.jpg" width="200px"/>
+<img src="images/NAME_Vietnam_raster1.jpg"/>
 
 Gridding point layer given output size and extent:
 
