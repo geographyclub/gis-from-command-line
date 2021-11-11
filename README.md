@@ -2,7 +2,7 @@
 
 This is my introduction to using open source command-line tools in Linux to make your own *Geographic Information Systems*.
 
-<img src="images/HYP_HR_SR_OB_DR_500px.jpg"/>
+<img src="images/HYP_HR_SR_OB_DR.jpg"/>
 
 ## 1. GDAL
 
@@ -30,7 +30,7 @@ Rasterizing selected vector features given pixel resolution:
 
 ☞ *Vietnam feature rasterized at 0.1° resolution:*
 
-<img src="images/NAME_Vietnam_raster01_250px.jpg"/>
+<img src="images/NAME_Vietnam_raster01.jpg"/>
 
 Gridding point layer given output size and extent:
 
