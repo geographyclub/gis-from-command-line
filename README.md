@@ -30,9 +30,7 @@ Rasterizing selected vector features given pixel resolution:
 
 ☞ *Vietnam feature rasterized at 0.1° and 1° resolution:*
 
-<img src="images/NAME_Vietnam_raster01.jpg"/>
-
-<img src="images/NAME_Vietnam_raster1.jpg"/>
+<img src="images/NAME_Vietnam_raster01.jpg"/><img src="images/NAME_Vietnam_raster1.jpg"/>
 
 Gridding point layer given output size and extent:
 
