@@ -334,8 +334,13 @@ Reprojecting geometry from lat-long to web mercator:
 
 Finding nearest neighbor:
 
-```psql -d dbname -c "UPDATE gebco_contour1 a SET geom = (SELECT b.geom FROM contour10m_segment1 b WHERE ST_DWithin(a.geom, b.geom, 1) ORDER BY a.geom <-> b.geom LIMIT 1);"```
+```psql -d dbname -c "SELECT b.geom FROM contour10m_segment1 b WHERE ST_DWithin(a.geom, b.geom, 1) ORDER BY a.geom <-> b.geom LIMIT 1;"```
 
 Finding features in envelope:
 
 ```psql -d dbname -c "SELECT fid FROM nmnh WHERE geom && ST_MakeEnvelope(-94, 43, -83, 52);"```
+
+Cluster features by geometric median:
+
+```psql -d dbname -c "SELECT a.geom, b.geom FROM contour10m_segments b ORDER BY b.geom <-> ST_GeometricMedian(ST_Collect(a.geom)) LIMIT 1 FROM insdc a, geonames b GROUP BY a.species;"```
+
