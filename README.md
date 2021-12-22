@@ -17,7 +17,7 @@ This is my introduction to using open source command-line tools in Linux to make
     2.3 [Transform coordinates](#23-transform-coordinates)  
     2.4 [Process vector data](#24-process-vector-data)  
 3. [PSQL](#3-psql)  
-    3.1 [Print info](#31-print-info)  
+    3.1 [Start up database](#31-start-up-database)  
     3.2 [Import data](#32-import-data)  
     3.3 [Export data](#33-export-data)  
     3.4 [Create tables](#34-create-tables)  
@@ -236,7 +236,21 @@ Using math functions:
 
 PostGIS is a spatial database extender for PostgreSQL object-relational database. It adds support for geographic objects allowing location queries to be run in SQL.
 
-### 3.1 Print info
+### 3.1 Start up database
+
+Creating user *steve*:
+
+```sudo psql -u postgres -d psql "CREATE USER steve;"```
+
+```sudo psql -u postgres -d psql "ALTER USER steve WITH SUPERUSER;"```
+
+Creating database *world* with user *steve*:
+
+```createdb -O steve world```
+
+Enabling PostGIS and other extensions:
+
+```psql -d world -c "CREATE EXTENSION postgis; CREATE EXTENSION postgis_topology; CREATE EXTENSION postgis_raster; CREATE EXTENSION postgis_sfcgal; CREATE EXTENSION hstore; CREATE extension tablefunc;"```
 
 Listing all databases:
 
@@ -310,19 +324,18 @@ Adding and updating geometry:
 1. ```psql -d dbname -c "ALTER TABLE contour100m ADD COLUMN geom TYPE GEOMETRY(MULTILINESTRING, 4326);"```
 2. ```psql -d dbname -c "UPDATE contour100m SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
 
-Reprojecting geometry with spatial filter:
+Reprojecting geometry from lat-long to web mercator:
 
 1. ```psql -d dbname -c "ALTER TABLE urbanareas_3857 ALTER COLUMN geom type geometry;"```
-2. ```psql -d dbname -c "UPDATE urbanareas_3857 SET geom = ST_Intersection(ST_MakeEnvelope(-179, -89, 179, 89, 4326),geom);"```
-3. ```psql -d dbname -c "SELECT UpdateGeometrySRID('hydroriver_simple_3857', 'shape', 3857);"```
-4. ```psql -d dbname -c "UPDATE hydroriver_simple_3857 SET shape = ST_Transform(ST_SetSRID(shape,4326),3857);"```
+2. ```psql -d dbname -c "SELECT UpdateGeometrySRID('hydroriver_simple_3857', 'geom', 3857);"```
+3. ```psql -d dbname -c "UPDATE hydroriver_simple_3857 SET shape = ST_Transform(ST_SetSRID(shape,4326),3857);"```
 
 ### 3.6 Spatial queries
 
-Joining tables (inner):
+Joining tables on field:
 
 ```psql -d dbname -c "UPDATE geonames a SET localname = b.alternatename FROM alternatenames b WHERE a.geonameid = b.geonameid AND a.languagename = b.isolanguage;"```
 
-Joining tables (cross):
+Joining tables on nearest neighbor:
 
 ```psql -d dbname -c "SELECT a.geom, a.vname_en, a.datasetkey, a.kingdom, a.phylum, a.class, a.order, a.family, a.genus, a.species, a.scientificname, (SELECT CAST(b.fid AS int) AS contourid FROM contour10m_seg1_5 AS b ORDER BY b.geom <-> a.geom LIMIT 1) FROM nmnh AS a WHERE a.geom && ST_MakeEnvelope(${extent})"```
