@@ -332,7 +332,10 @@ Reprojecting geometry from lat-long to web mercator:
 
 ### 3.6 Spatial queries
 
-Joining tables on nearest neighbor:
+Finding nearest neighbor:
 
 ```psql -d dbname -c "UPDATE gebco_contour1 a SET geom = (SELECT b.geom FROM contour10m_segment1 b WHERE ST_DWithin(a.geom, b.geom, 1) ORDER BY a.geom <-> b.geom LIMIT 1);"```
 
+Finding features in envelope:
+
+```psql -d dbname -c "SELECT fid FROM nmnh WHERE geom && ST_MakeEnvelope(-94, 43, -83, 52);"```
