@@ -16,7 +16,7 @@ This is my introduction to using open source command-line tools in Linux to make
     2.2 [Convert vector data](#22-convert-vector-data)  
     2.3 [Transform coordinates](#23-transform-coordinates)  
     2.4 [Process vector data](#24-process-vector-data)  
-3. [PSQL](#3-psql)
+3. [PSQL](#3-psql)  
     3.1 [Print info](#31-print-info)  
     3.2 [Import data](#32-import-data)  
     3.3 [Export data](#33-export-data)  
