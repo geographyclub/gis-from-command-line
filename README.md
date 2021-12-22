@@ -9,7 +9,13 @@ This is my introduction to using open source command-line tools in Linux to make
 1. [GDAL](#1-gdal)  
     1.1 [Print raster info](#11-print-raster-info)  
     1.2 [Convert raster data](#12-convert-raster-data)  
+    1.3 [Transform coordinates](#13-transform-coordinates)  
+    1.4 [Process raster data](#14-process-raster-data)  
 2. [OGR](#2-ogr)  
+    2.1 [Print vector info](#21-print-vector-info)  
+    2.2 [Convert vector data](#22-convert-vector-data)  
+    2.3 [Transform coordinates](#23-transform-coordinates)  
+    2.4 [Process vector data](#24-process-vector-data)  
 3. [PSQL](#3-psql)
 
 ## 1. GDAL
