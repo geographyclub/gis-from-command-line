@@ -4,6 +4,10 @@ This is my introduction to using open source command-line tools in Linux to make
 
 <img src="images/HYP_HR_SR_OB_DR.jpg"/>
 
+## TABLE OF CONTENTS
+
+[1. GDAL](https://github.com/geographyclub/gis-from-command-line#1-gdal)
+
 ## 1. GDAL
 
 The Geospatial Data Abstraction Library is a computer software library for reading and writing raster and vector geospatial data formats.
