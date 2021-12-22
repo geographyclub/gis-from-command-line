@@ -6,7 +6,8 @@ This is my introduction to using open source command-line tools in Linux to make
 
 ## TABLE OF CONTENTS
 
-[1. GDAL](https://github.com/geographyclub/gis-from-command-line#1-gdal)
+1. [GDAL](https://github.com/geographyclub/gis-from-command-line#1-gdal)
+2. [OGR](https://github.com/geographyclub/gis-from-command-line#1-ogr)
 
 ## 1. GDAL
 
