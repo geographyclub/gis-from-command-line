@@ -332,10 +332,7 @@ Reprojecting geometry from lat-long to web mercator:
 
 ### 3.6 Spatial queries
 
-Joining tables on field:
-
-```psql -d dbname -c "UPDATE geonames a SET localname = b.alternatename FROM alternatenames b WHERE a.geonameid = b.geonameid AND a.languagename = b.isolanguage;"```
-
 Joining tables on nearest neighbor:
 
-```psql -d dbname -c "SELECT a.geom, a.vname_en, a.datasetkey, a.kingdom, a.phylum, a.class, a.order, a.family, a.genus, a.species, a.scientificname, (SELECT CAST(b.fid AS int) AS contourid FROM contour10m_seg1_5 AS b ORDER BY b.geom <-> a.geom LIMIT 1) FROM nmnh AS a WHERE a.geom && ST_MakeEnvelope(${extent})"```
+```psql -d dbname -c "UPDATE gebco_contour1 a SET geom = (SELECT b.geom FROM contour10m_segment1 b WHERE ST_DWithin(a.geom, b.geom, 1) ORDER BY a.geom <-> b.geom LIMIT 1);"```
+
