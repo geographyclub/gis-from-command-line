@@ -7,7 +7,8 @@ This is my introduction to using open source command-line tools in Linux to make
 ## TABLE OF CONTENTS
 
 1. [GDAL](https://github.com/geographyclub/gis-from-command-line#1-gdal)
-2. [OGR](https://github.com/geographyclub/gis-from-command-line#1-ogr)
+2. [OGR](https://github.com/geographyclub/gis-from-command-line#2-ogr)
+3. [PSQL](https://github.com/geographyclub/gis-from-command-line#3-psql)
 
 ## 1. GDAL
 
@@ -217,7 +218,7 @@ Using math functions:
 
 ```ogr2ogr -overwrite -sql 'SELECT name, ROUND(area/1000) AS area_km FROM ne_110m_admin_0_countries' -nln countries natural_earth_vector_largecountries.gpkg natural_earth_vector.gpkg```
 
-## 3. POSTGRESQL / POSTGIS
+## 3. PSQL
 
 PostGIS is a spatial database extender for PostgreSQL object-relational database. It adds support for geographic objects allowing location queries to be run in SQL.
 
