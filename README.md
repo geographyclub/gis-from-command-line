@@ -8,7 +8,7 @@ This is my introduction to using open source command-line tools in Linux to make
 
 1. [GDAL](#1-gdal)
 
-    [Print raster info](#11-print-raster-info)
+    1.1 [Print raster info](#11-print-raster-info)
 
 2. [OGR](#2-ogr)
 
