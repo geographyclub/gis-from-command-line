@@ -48,10 +48,6 @@ Rasterizing selected vector features given pixel resolution:
 
 ```gdal_rasterize -tr 1 1 -ts 1024 512 -a_nodata 0 -burn 1 -l ne_10m_land natural_earth_vector.gpkg ne_10m_land.tif```
 
-☞ *Vietnam feature rasterized at 0.1° and 1° resolution:*
-
-<img src="images/NAME_Vietnam_raster01.jpg"/><img src="images/NAME_Vietnam_raster1.jpg"/>
-
 Gridding point layer given output size and extent:
 
 ```gdal_grid -of 'netCDF' -co WRITE_BOTTOMUP=NO -zfield 'field1' -a invdist -txe -180 180 -tye -90 90 -outsize 1000 500 -ot Float64 -l points points.vrt grid.nc```
