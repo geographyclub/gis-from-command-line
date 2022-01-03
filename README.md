@@ -230,7 +230,7 @@ Using math functions:
 
 ## 3. PSQL
 
-PostGIS is a spatial database extender for PostgreSQL object-relational database. It adds support for geographic objects allowing location queries to be run in SQL.
+PostGIS is a spatial database extender for PostgreSQL object-relational database. It adds support for geographic objects allowing location queries to be run in SQL. Run these commands in ```psql``` or with ```psql -d dbname -c "sql"```
 
 ### 3.1 Start up database
 
