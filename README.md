@@ -1,6 +1,6 @@
-# GIS FROM COMMAND LINE
+# GIS FROM COMMAND LINE (BASH-GIS)
 
-This is my introduction to using open source command-line tools in Linux to make your own *Geographic Information Systems*.
+This is how I use open source command-line tools in Linux to make my own *Geographic Information Systems*.
 
 <img src="images/HYP_HR_SR_OB_DR.jpg"/>
 
@@ -16,13 +16,6 @@ This is my introduction to using open source command-line tools in Linux to make
     2.2 [Convert vector data](#22-convert-vector-data)  
     2.3 [Transform coordinates](#23-transform-coordinates)  
     2.4 [Process vector data](#24-process-vector-data)  
-3. [PSQL](#3-psql)  
-    3.1 [Start up database](#31-start-up-database)  
-    3.2 [Import data](#32-import-data)  
-    3.3 [Export data](#33-export-data)  
-    3.4 [Create tables](#34-create-tables)  
-    3.5 [Alter tables](#35-alter-tables)  
-    3.6 [Spatial queries](#36-spatial-queries)  
 
 ## 1. GDAL
 
@@ -227,116 +220,4 @@ Using logical operators:
 Using math functions:
 
 ```ogr2ogr -overwrite -sql 'SELECT name, ROUND(area/1000) AS area_km FROM ne_110m_admin_0_countries' -nln countries natural_earth_vector_largecountries.gpkg natural_earth_vector.gpkg```
-
-## 3. PSQL
-
-PostGIS is a spatial database extender for PostgreSQL object-relational database. It adds support for geographic objects allowing location queries to be run in SQL.
-
-### 3.1 Start up database
-
-Creating user *steve*:
-
-```sudo psql -u postgres -d psql "CREATE USER steve;"```
-
-```sudo psql -u postgres -d psql "ALTER USER steve WITH SUPERUSER;"```
-
-Creating database *world* with user *steve*:
-
-```createdb -O steve world```
-
-Enabling PostGIS and other extensions:
-
-```psql -d world -c "CREATE EXTENSION postgis; CREATE EXTENSION postgis_topology; CREATE EXTENSION postgis_raster; CREATE EXTENSION postgis_sfcgal; CREATE EXTENSION hstore; CREATE extension tablefunc;"```
-
-Listing all databases:
-
-```psql -d dbname -c "\l"```
-
-Listing tables in database:
-
-```psql -d dbname -c "\dt"```
-
-Printing useful info on table:
-
-```psql -d dbname -c "\d layer"```
-
-### 3.2 Import data
-
-Importing GDAL raster:
-
-```raster2pgsql -d -s 4326 -I -C -M HYP_HR_SR_OB_DR_1024_512.tif -F -t auto HYP_HR_SR_OB_DR_1024_512 | psql -d dbname```
-
-Two ways of importing OGR layer:
-
-```ogr2ogr -overwrite -f 'PostgreSQL' PG:dbname=dbname -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries110m natural_earth_vector.gpkg ne_110m_admin_0_countries```
-
-```ogr2ogr -f PGDump --config PG_USE_COPY YES -lco precision=NO -nlt PROMOTE_TO_MULTI -nlt MULTIPOLYGON -nln countries110m /vsistdout/ natural_earth_vector.gpkg ne_110m_admin_0_countries | psql -d dbname -f -```
-
-### 3.3 Export data
-
-Exporting table to SQLite database:
-
-```ogr2ogr -overwrite -f 'SQLite' -dsco SPATIALITE=YES avh.sqlite PG:dbname=dbname avh```
-
-Exporting query to CSV file:
-
-```psql -d dbname -c "\COPY (SELECT * FROM places10m) TO STDOUT WITH CSV HEADER DELIMITER E'\t'" > places.csv```
-
-Exporting query with JSON and HTML tags:
-
-```psql -d dbname -c "\COPY (SELECT '<p>' || ROW_TO_JSON(t) || '</p>' FROM (SELECT a.nameascii, b.station_id, b.temp, b.wind_sp, b.sky FROM places a, metar b WHERE a.metar_id = b.station_id) t) TO STDOUT;" >> $PWD/data/datastream.html;```
-
-Exporting region with `ST_MakeEnvelope`:
-
-```ogr2ogr -overwrite -f 'GPKG' -sql "SELECT * FROM gbif WHERE geom && ST_MakeEnvelope(-123, 41, -111, 51)" -nlt POINT -nln gbif gbif.gpkg PG:dbname=dbname```
-
-### 3.4 Create tables
-
-Creating table and importing CSV with geometry:
-
-1. ```psql -d dbname -c "CREATE TABLE metar(station_id text, lat float8, lon float8, temp float8, wind_dir int, wind_sp int, sky text, wx text);"```
-2. ```psql -d dbname -c "COPY metar FROM 'metar.cache.csv' DELIMITER ',' CSV HEADER;"```
-3. ```psql -d dbname -c "SELECT AddGeometryColumn('metar', 'geom', 4326, 'POINT', 2);"```
-4. ```psql -d dbname -c "UPDATE metar SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
-
-### 3.5 Alter tables
-
-Changing data type:
-
-```psql -d dbname -c "ALTER TABLE limw_points ALTER COLUMN contour100m_id TYPE INT USING contour100m_id::integer;"```
-
-Adding or designating index:
-
-```psql -d dbname -c "ALTER TABLE ecoregion ADD COLUMN fid serial primary key;"```
-
-```psql -d dbname -c "ALTER TABLE places ADD PRIMARY KEY (fid);"```
-
-Adding geometry index:
-
-```psql -d dbname -c "CREATE INDEX contour100m_gid ON contour100m USING GIST (geom);"```
-
-Adding and updating geometry:
-
-1. ```psql -d dbname -c "ALTER TABLE contour100m ADD COLUMN geom TYPE GEOMETRY(MULTILINESTRING, 4326);"```
-2. ```psql -d dbname -c "UPDATE contour100m SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);"```
-
-Reprojecting geometry from lat-long to web mercator:
-
-1. ```psql -d dbname -c "ALTER TABLE urbanareas_3857 ALTER COLUMN geom type geometry;"```
-2. ```psql -d dbname -c "SELECT UpdateGeometrySRID('hydroriver_simple_3857', 'geom', 3857);"```
-3. ```psql -d dbname -c "UPDATE hydroriver_simple_3857 SET shape = ST_Transform(ST_SetSRID(shape,4326),3857);"```
-
-### 3.6 Spatial queries
-
-Finding nearest neighbor between features:
-
-```psql -d dbname -c "SELECT b.geom FROM contour10m_segment1 b WHERE ST_DWithin(a.geom, b.geom, 1) ORDER BY a.geom <-> b.geom LIMIT 1;"```
-
-Finding features in envelope:
-
-```psql -d dbname -c "SELECT fid FROM nmnh WHERE geom && ST_MakeEnvelope(-94, 43, -83, 52);"```
-
-Finding geometric median of features:
-
-```psql -d dbname -c "SELECT a.geom, b.geom FROM contour10m_segments b ORDER BY b.geom <-> ST_GeometricMedian(ST_Collect(a.geom)) LIMIT 1 FROM insdc a, geonames b GROUP BY a.species;"```
 
