@@ -6,11 +6,11 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
 
 ## TABLE OF CONTENTS
 
-1. [RASTER](#1-raster)  
-    1.1 [Resampling](#11-resampling)  
-    1.2 [Reprojecting](#12-reprojecting) 
-    1.3 [Georeferencing](#13-georeferencing)  
-    1.4 [Clipping](#14-clipping)  
+1. [Raster](#1-raster)  
+    1.1 [Resampling](#11-resampling)
+    1.2 [Reprojecting](#12-reprojecting)
+    1.3 [Georeferencing](#13-georeferencing)
+    1.4 [Clipping](#14-clipping)
     1.5 [Converting](#15-converting)  
 
 ## 1. Raster
