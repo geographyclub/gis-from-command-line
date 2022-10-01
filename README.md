@@ -94,7 +94,7 @@ Center the orthographic projection on the centroid of a country using the same m
 ```
 file='hyp.tif'
 place='Ukraine'
-xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_admin_0_countries WHERE name = '${place}'" | grep '=' | sed -e 's/^.*= //g'))
+xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${place}'" | grep '=' | sed -e 's/^.*= //g'))
 gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
@@ -114,28 +114,33 @@ Georeference and transform in one step.
 ### 1.4 Clipping
 
 Clip to bounding box using `gdal_translate` or `gdalwarp`.  
-```gdal_translate -projwin -94 54 -82 42 HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_clipped.tif```
+```gdal_translate -projwin -180 90 0 -90 hyp.tif hyp_west.tif```
 
-```gdalwarp -overwrite -dstalpha -te -94 42 -82 54 HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_clipped.tif```
+```gdalwarp -overwrite -te 0 -90 180 90 hyp.tif hyp_east.tif```
 
-Clip to extent of geometry given country name.  
+Merge our two clipped rasters back together.  
+```gdal_merge.py -o hyp_east_west.tif hyp_east.tif hyp_west.tif```
+
+<img src="images/hyp_east_west.jpg"/>
+
+Clip to extent of vector geometry by name.  
 ```
 file='hyp.tif'
-place='CAN'
-extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM ne_10m_admin_0_map_subunits WHERE sov_a3 = '${place}'" | grep '=' | sed -e 's/^.*= //g'))
+place='Europe'
+extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM ne_110m_admin_0_countries WHERE CONTINENT = '${place}'" | grep '=' | sed -e 's/^.*= //g'))
 gdalwarp -overwrite -ts 1920 0 -te ${extent[*]} ${file} ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
 ```
 
 <img src="images/hyp_extent_-141_42_-53_83.jpg"/>
 
-Clip to vector feature with `crop_to_cutline` option.  
+Clip to vector geometry with `crop_to_cutline` option.  
 ```
 file='hyp.tif'
-place='Brazil'
-gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT geom FROM ne_10m_admin_0_map_subunits WHERE name = '${place}'" hyp.tif hyp_${place// /_}.tif
+featurecla='Ocean'
+gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT geom FROM ne_110m_ocean WHERE featurecla = '${featurecla}'" hyp.tif hyp_${featurecla,,}.tif
 ```
 
-<img src="images/hyp_Brazil.jpg"/>
+<img src="images/hyp_ocean.jpg"/>
 
 Clip to raster mask using `gdal_calc.py`.  
 ```
@@ -166,6 +171,4 @@ Use `gdal_translate` to convert from GeoTIFF to VRT.
 Use `gdalwarp` to convert from GeoTIFF to regular TIFF (use with programs like imagemagick).  
 ```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512.tif```
 
-Make mosaic from two or more raster images.  
-```gdal_merge.py -o mosaic.tif part1.tif part2.tif part3.tif part4.tif```
 
