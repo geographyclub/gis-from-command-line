@@ -35,7 +35,7 @@ ls *.tif | while read file; do
 done
 ```
 
-Resize raster as a fraction of its original size.  
+Resize raster as a fraction of its original size using output from `gdalinfo`.  
 ```gdalwarp -overwrite -ts $(echo $(gdalinfo hyp.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline hyp.tif hyp_192.tif```
 
 ### 1.2 Reprojecting
@@ -43,7 +43,7 @@ Resize raster as a fraction of its original size.
 Set prime meridian on 0-360° raster.  
 ```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over" hyp.tif hyp_180pm.tif```
 
-Set prime meridian on -180-180° raster by degree.  
+Set prime meridian on -180-180° raster by desired degree.  
 ```
 file='hyp.tif'
 prime=180
@@ -52,7 +52,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${
 
 <img src="images/hyp_180pm.jpg"/>
 
-Set prime meridian on -180-180° raster by placename from Natural Earth vector data.  
+Set prime meridian on -180-180° raster by desired placename. Use `ogrinfo` to query a Natural Earth geopackage.  
 ```
 file='hyp.tif'
 place='Toronto'
@@ -62,7 +62,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${
 
 <img src="images/hyp_281pm.jpg"/>
 
-Use EPSG code to transform from lat-long to the popular Web Mercator projection.  
+Transform from lat-long to the popular Web Mercator projection using EPSG code.  
 ```
 file='hyp.tif'
 proj='epsg:3857'
@@ -71,7 +71,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs ${proj} -te -180 -85 180 80 -te_sr
 
 <img src="images/hyp_epsg_3857.jpg"/>
 
-Use PROJ definition to transform from lat-long to van der Grinten projection.  
+Transform from lat-long to van der Grinten projection using PROJ definition.  
 ```
 file='hyp.tif'
 proj='+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m no_defs'
@@ -80,9 +80,13 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(ec
 
 <img src="images/hyp_vandg.jpg"/>
 
-Customize PROJ definition to transform from lat-long to an orthographic projection centered on Seoul. Again from Natural Earth vector data.  
-```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0='43.65' +lon_0='-79.34' +ellps='sphere'' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_ortho_toronto.tif```
-
+Transform from lat-long to an orthographic projection with a custom PROJ definition. Again use `ogrinfo` to query a Natural Earth geopackage.  
+```
+file='hyp.tif'
+place='Seoul'
+xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${place}'" | grep '=' | sed -e 's/^.*= //g'))
+gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
+```
 
 ### 1.3 Georeferencing
 
