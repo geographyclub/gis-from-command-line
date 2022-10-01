@@ -126,12 +126,12 @@ Merge our two clipped rasters back together.
 Clip to extent of vector geometry by name.  
 ```
 file='hyp.tif'
-place='Europe'
-extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM ne_110m_admin_0_countries WHERE CONTINENT = '${place}'" | grep '=' | sed -e 's/^.*= //g'))
+place='North America'
+extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${place}')" | grep '=' | sed -e 's/^.*= //g'))
 gdalwarp -overwrite -ts 1920 0 -te ${extent[*]} ${file} ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
 ```
 
-<img src="images/hyp_extent_-141_42_-53_83.jpg"/>
+<img src="images/hyp_extent_-172_7_-12_84.jpg"/>
 
 Clip to vector geometry with `crop_to_cutline` option.  
 ```
