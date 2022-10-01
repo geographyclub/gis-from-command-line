@@ -19,47 +19,54 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
 
 ### 1.1 Resampling
 
-Resize Natural Earth hypsometric raster by desired width. This will be our example raster.  
+Resize Natural Earth hypsometric raster by desired width while keeping the aspect ratio. This will be our example raster.  
 ```
-gdalwarp -overwrite -ts 1920 0 -r cubicspline HYP_HR_SR_OB_DR.tif hyp.tif
+file='HYP_HR_SR_OB_DR.tif'
+width=1920
+gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} hyp.tif
 ```
 
 <img src="images/hyp.jpg"/>
 
-Convert and resize all geotiffs in the folder to jpg. These will be our example thumbnails.  
+Resize and convert all geotiffs in the folder to jpg. These will be our example thumbnails.  
 ```
 ls *.tif | while read file; do
   gdal_translate -of 'JPEG' -outsize 25% 25% ${file} ${file%.*}.jpg
 done
 ```
 
-Resize raster by a factor of its original size using output of `gdalinfo`.  
-```
-file='hyp.tif'
-factor=100
-width=$(echo $(gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/${factor} | bc)
-gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} ${file%.*}_${width}.tif
-```
-
-<img src="images/hyp_19.jpg"/>
-
-Downsample then upsample by the same amount to smooth raster (for making contour lines).  
-```
-file='hyp.tif'
-factor=10
-width=$(echo $(gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/${factor} | bc)
-gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} /vsistdout/ | gdalwarp -overwrite -ts $(echo $(gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')) 0 -r cubicspline /vsistdin/ ${file%.*}_smooth.tif
-```
-
-<img src="images/hyp_192_smooth.jpg"/>
+Resize raster as a fraction of its original size.  
+```gdalwarp -overwrite -ts $(echo $(gdalinfo hyp.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline hyp.tif hyp_192.tif```
 
 ### 1.2 Reprojecting
 
-Use EPSG code to transform from lat-long to the popular Web Mercator projection (Google Maps, OpenStreetMap).  
+Set prime meridian on 0-360° raster.  
+```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over" hyp.tif hyp_180pm.tif```
+
+Set prime meridian on -180-180° raster by degree.  
+```
+file='hyp.tif'
+prime=180
+gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${prime}dE" ${file} ${file%.*}_180pm.tif
+```
+
+<img src="images/hyp_180pm.jpg"/>
+
+Set prime meridian on -180-180° raster by placename from Natural Earth vector data.  
+```
+file='hyp.tif'
+place='Toronto'
+prime=$(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Shift_Longitude(geom))) FROM ne_10m_populated_places WHERE nameascii = '${place}'" | grep '=' | sed -e 's/^.*= //g')
+gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${prime}dE" ${file} ${file%.*}_${prime}pm.tif
+```
+
+<img src="images/hyp_281pm.jpg"/>
+
+Use EPSG code to transform from lat-long to the popular Web Mercator projection.  
 ```
 file='hyp.tif'
 proj='epsg:3857'
-gdalwarp -overwrite -s_srs EPSG:4326 -t_srs ${proj} -te -180 -85 180 80 -te_srs EPSG:4326 ${file} ${file%.*}_"${proj//:/_}".tif
+gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs ${proj} -te -180 -85 180 80 -te_srs EPSG:4326 ${file} ${file%.*}_"${proj//:/_}".tif
 ```
 
 <img src="images/hyp_epsg_3857.jpg"/>
@@ -68,18 +75,14 @@ Use PROJ definition to transform from lat-long to van der Grinten projection.
 ```
 file='hyp.tif'
 proj='+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m no_defs'
-gdalwarp -overwrite -s_srs EPSG:4326 -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
+gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
 ```
 
 <img src="images/hyp_vandg.jpg"/>
 
-Customize PROJ definition to transform from lat-long to an orthographic projection centered on Toronto.  
+Customize PROJ definition to transform from lat-long to an orthographic projection centered on Seoul. Again from Natural Earth vector data.  
 ```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0='43.65' +lon_0='-79.34' +ellps='sphere'' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_ortho_toronto.tif```
 
-Shift prime meridian on a 0-360° raster and a -180-180° raster.  
-```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=latlong +datum=WGS84 +pm=180dE' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_180pm.tif```
-
-```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_180pm.tif```
 
 ### 1.3 Georeferencing
 
