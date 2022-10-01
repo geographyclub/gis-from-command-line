@@ -41,6 +41,8 @@ width=$(echo $(gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/
 gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} ${file%.*}_${width}.tif
 ```
 
+<img src="images/hyp_19.jpg"/>
+
 Downsample then upsample by the same amount to smooth raster (for making contour lines).  
 ```
 file='hyp.tif'
@@ -57,7 +59,7 @@ Use EPSG code to transform from lat-long to the popular Web Mercator projection 
 ```
 file='hyp.tif'
 proj='epsg:3857'
-gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"${proj//:/_}".tif
+gdalwarp -overwrite -s_srs EPSG:4326 -t_srs ${proj} -te -180 -85 180 80 -te_srs EPSG:4326 ${file} ${file%.*}_"${proj//:/_}".tif
 ```
 
 <img src="images/hyp_epsg_3857.jpg"/>
@@ -66,10 +68,10 @@ Use PROJ definition to transform from lat-long to van der Grinten projection.
 ```
 file='hyp.tif'
 proj='+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m no_defs'
-gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
+gdalwarp -overwrite -s_srs EPSG:4326 -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
 ```
 
-<img src="images/hyp_192_vandg.jpg"/>
+<img src="images/hyp_vandg.jpg"/>
 
 Customize PROJ definition to transform from lat-long to an orthographic projection centered on Toronto.  
 ```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0='43.65' +lon_0='-79.34' +ellps='sphere'' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512_ortho_toronto.tif```
