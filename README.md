@@ -1,6 +1,6 @@
 # GIS FROM COMMAND LINE
 
-GDAL (Geospatial Data Abstraction Library) is a computer software library for reading and writing raster and vector geospatial data formats. But it is much more than that. This is how I use GDAL and a little scripting to make my own *Geographic Information Systems* from the command line.
+GDAL (Geospatial Data Abstraction Library) is a computer software library for reading and writing raster and vector geospatial data formats. But it is much more than that. This is how I use GDAL with a little BASH scripting to make my own *Geographic Information Systems* from the command line.
 
 <img src="images/space_globe_grid.jpg"/>
 
@@ -13,24 +13,39 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
     1.4 [Clipping](#14-clipping)  
     1.5 [Converting](#15-converting)    
 
+[ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
+
 ## 1. Raster
 
 ### 1.1 Resampling
 
-Use `gdalinfo` to resize raster by a factor of its original width.  
+Resize Natural Earth hypsometric raster by desired width. This will be our example raster.  
 ```
-file='HYP_HR_SR_OB_DR_1024_512.tif'
-width=$(echo $(gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/2 | bc)
+gdalwarp -overwrite -ts 1920 0 -r cubicspline HYP_HR_SR_OB_DR.tif hyp.tif
+```
+
+<img src="images/hyp.jpg"/>
+
+Convert and resize all geotiffs in the folder to jpg. These will be our example thumbnails.  
+```ls *.tif | while read file; do gdal_translate -of 'JPEG' -outsize 25% 25% ${file} ${file%.*}.jpg; done```
+
+Resize raster by a factor of its original size using output of `gdalinfo`.  
+```
+file='hyp.tif'
+factor=10
+width=$(echo $(gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/${factor} | bc)
 gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} ${file%.*}_${width}.tif
 ```
 
-Downsample then upsample by the same factor to smooth raster (for making contour lines).  
+Downsample then upsample by the same amount to smooth raster (for making contour lines).  
 ```
-file='topo15.tif'
-width1=$(echo $(gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc)
-width2=$(echo $(gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/1 | bc)
-gdalwarp -overwrite -ts ${width1} 0 -r cubicspline ${file} /vsistdout/ | gdalwarp -overwrite -ts ${width2} 0 -r cubicspline /vsistdin/ ${file%_*}_${width1}_${width2}.tif
+file='hyp.tif'
+factor=10
+width=$(echo $(gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/${factor} | bc)
+gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} /vsistdout/ | gdalwarp -overwrite -ts $(echo $(gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')) 0 -r cubicspline /vsistdin/ ${file%.*}_${width}_smooth.tif
 ```
+
+<img src="images/hyp_192_smooth.jpg"/>
 
 ### 1.2 Reprojecting
 
