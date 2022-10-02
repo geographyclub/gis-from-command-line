@@ -9,11 +9,13 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
 1. [Raster](#1-raster)  
     1.1 [Resampling](#11-resampling)  
     1.2 [Reprojecting](#12-reprojecting)  
-    1.3 [Georeferencing](#13-georeferencing)  
-    1.4 [Clipping](#14-clipping)  
-    1.5 [Converting](#15-converting)    
+    1.3 [Clipping](#13-clipping)  
+    1.4 [Geoprocessing](#14-geoprocessing)  
+    1.5 [Converting](#15-converting)  
 
-[ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
+2. [Vector](#1-vector)   
+
+3. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
 
 ## 1. Raster
 
@@ -100,8 +102,6 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +
 
 <img src="images/hyp_ortho_31_49.jpg"/>
 
-### 1.3 Georeferencing
-
 Georeference by extent.  
 ```gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
 
@@ -111,19 +111,19 @@ Georeference by ground control points.
 Georeference and transform in one step.  
 ```gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -t_srs 'EPSG:4326' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif```
 
-### 1.4 Clipping
+### 1.3 Clipping
 
 Clip to bounding box using `gdal_translate` or `gdalwarp`.  
 ```gdal_translate -projwin -180 90 0 -90 hyp.tif hyp_west.tif```
 
 ```gdalwarp -overwrite -te 0 -90 180 90 hyp.tif hyp_east.tif```
 
-Merge our two clipped rasters back together.  
+Merge our two clipped rasters back together to remake the original.  
 ```gdal_merge.py -o hyp_east_west.tif hyp_east.tif hyp_west.tif```
 
 <img src="images/hyp_east_west.jpg"/>
 
-Clip to extent of vector geometry by name.  
+Clip to extent of vector geometries.  
 ```
 file='hyp.tif'
 place='North America'
@@ -141,6 +141,8 @@ gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pac
 ```
 
 <img src="images/hyp_ocean.jpg"/>
+
+### 1.4 Geoprocessing
 
 Clip to raster mask using `gdal_calc.py`.  
 ```
@@ -171,4 +173,4 @@ Use `gdal_translate` to convert from GeoTIFF to VRT.
 Use `gdalwarp` to convert from GeoTIFF to regular TIFF (use with programs like imagemagick).  
 ```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512.tif```
 
-
+## 2. Vector
