@@ -172,25 +172,30 @@ Clip Natural Earth raster to the land mask.
 
 <img src="images/hyp_mask.jpg"/>
 
-Rasterize vector features selected from Natural Earth geopackage at specified output size.  
+Rasterize a vector feature attribute selected from the Natural Earth geopackage.  
 ```gdal_rasterize -ts 1920 960 -te -180 -90 180 90 -l ne_110m_admin_0_countries_lakes -a mapcolor9 -a_nodata NA -ot Byte -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg countries.tif```
 
 Create custom color file and color raster map.  
 ```
-cat > rainbow.cpt <<- EOM
+cat > greyoclock.cpt <<- EOM
 100% 118 147 142 255
 50% 152 177 179
 25% 192 203 206
 0% 217 217 217 255
 NA 255 255 255 0
 EOM
-gdaldem color-relief -alpha countries.tif rainbow.cpt countries_color.tif
+gdaldem color-relief -alpha countries.tif greyoclock.cpt countries_color.tif
 ```
 
 <img src="images/countries_color.jpg"/>
 
-Multiply Natural Earth and our colored raster.  
-```gdal_calc.py --overwrite -A states_color.tif -B hyp.tif --allBands B --outfile=hyp_states.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
+Burn in values from a vector feature into the Natural Earth raster.
+```
+cp hyp.tif hyp_rivers.tif
+gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_10m_rivers_lake_centerlines -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_rivers.tif
+```
+
+<img src="images/hyp_rivers.jpg"/>
 
 ### 1.5 Converting
 
