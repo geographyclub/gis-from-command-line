@@ -17,9 +17,9 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
 
 3. [ImageMagick for mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
 
-4. [Web mapping - census data](https://github.com/geographyclub/american-geography#readme)
+4. [Animating maps - weather data](https://github.com/geographyclub/weather-to-video)
 
-5. [Animating maps - weather data](https://github.com/geographyclub/weather-to-video)
+5. [Web mapping - census data](https://github.com/geographyclub/american-geography#readme)
 
 ## 1. Raster
 
