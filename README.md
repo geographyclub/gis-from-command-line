@@ -77,16 +77,16 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs ${proj} -te -180 -85 180 80 -te_sr
 
 <img src="images/hyp_epsg_3857.png"/>
 
-Transform from lat-long to van der Grinten projection using PROJ definition.  
+Transform from lat-long to the Times projection using PROJ definition.  
 ```
 file='hyp.tif'
-proj='+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m'
+proj='+proj=times'
 gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
 ```
 
-<img src="images/hyp_vandg.png"/>
+<img src="images/hyp_times.png"/>
 
-Transform from lat-long to an orthographic projection with a custom PROJ definition, being careful to set ellipse to sphere. Again use `ogrinfo` to query a Natural Earth geopackage.  
+Transform from lat-long to an orthographic projection with a custom PROJ definition. Again use `ogrinfo` to query a Natural Earth geopackage.  
 ```
 file='hyp.tif'
 place='Seoul'
@@ -189,13 +189,13 @@ gdaldem color-relief -alpha countries.tif greyoclock.cpt countries_color.tif
 
 <img src="images/countries_color.png"/>
 
-Burn in values from a vector feature into the Natural Earth raster.
+Burn in value from a vector feature into the Natural Earth raster.
 ```
-cp hyp.tif hyp_rivers.tif
-gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_10m_rivers_lake_centerlines -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_rivers.tif
+cp hyp.tif hyp_urban.tif
+gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_10m_urban_areas -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_urban.tif
 ```
 
-<img src="images/hyp_rivers.png"/>
+<img src="images/hyp_urban.png"/>
 
 ### 1.5 Converting
 
