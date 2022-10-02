@@ -25,7 +25,7 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
 
 ### 1.1 Resampling
 
-Resize Natural Earth hypsometric raster by desired width while keeping the aspect ratio. This will be our example raster.  
+Resize the Natural Earth hypsometric raster to a web-safe width while keeping the aspect ratio. This will be our example raster.  
 ```
 file='HYP_HR_SR_OB_DR.tif'
 width=1920
@@ -68,7 +68,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${
 
 <img src="images/hyp_281pm.jpg"/>
 
-Transform from lat-long to the popular Web Mercator projection using EPSG code, setting extent between -85* and 80* latitudes.  
+Transform from lat-long to the popular Web Mercator projection using EPSG code, setting extent between -85* and 80* latitude.  
 ```
 file='hyp.tif'
 proj='epsg:3857'
@@ -151,7 +151,7 @@ gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pac
 Make an exaggerated shaded relief map from DEM.  
 ```gdaldem hillshade -combined -z 100 -s 111120 -az 315 -alt 45 -compute_edges topo.tif topo_hillshade.tif```
 
-Multiply hypsometric and shaded relief rasters with `gdal_calc.py`.  
+Multiply Natural Earth and shaded relief rasters with `gdal_calc.py`.  
 ```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
 
 <img src="images/hyp_hillshade.jpg"/>
@@ -162,7 +162,7 @@ Create a raster mask by keeping values greater than 0.
 Create a raster mask by setting values greater than 0 to 1.  
 ```gdal_calc.py --overwrite --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="1*(A>0)"```
 
-Clip hypsometric raster to our mask.  
+Clip Natural Earth raster to our mask.  
 ```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo_mask.tif -B hyp.tif --allBands B --outfile="hyp_mask.tif" --calc="B*(A>0)"```
 
 <img src="images/hyp_mask.jpg"/>
@@ -170,7 +170,7 @@ Clip hypsometric raster to our mask.
 Add rasters with `gdal_calc.py`.  
 ```
 # add where raster A is greater than zero.
-gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif -B HYP_HR_SR_OB_DR_1024_512_B.tif --outfile=HYP_HR_SR_OB_DR_1024_512_A_B.tif --calc="((A>0)*A)+B"
+gdal_calc.py --overwrite -A hyp.tif -B hyp.tif --outfile=HYP_HR_SR_OB_DR_1024_512_A_B.tif --calc="((A>0)*A)+B"
 
 # add with logical operator
 gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_100_150.tif --calc="A*logical_and(A>100,A<150)"
