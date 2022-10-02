@@ -81,7 +81,7 @@ Transform from lat-long to van der Grinten projection using PROJ definition.
 ```
 file='hyp.tif'
 proj='+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m'
-gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
+gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
 ```
 
 <img src="images/hyp_vandg.png"/>
