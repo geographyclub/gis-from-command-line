@@ -36,7 +36,7 @@ gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} hyp.tif
 Resize and convert all geotiffs in the folder to png. These will be our example thumbnails.  
 ```
 ls *.tif | while read file; do
-  gdal_translate -of 'JPEG' -outsize 25% 25% ${file} ${file%.*}.png
+  gdal_translate -of 'PNG' -outsize 50% 50% ${file} ${file%.*}.png
 done
 ```
 
@@ -175,11 +175,11 @@ gdaldem color-relief -alpha countries.tif greyoclock.cpt countries_color.tif
 
 Burn in value from a vector feature into the Natural Earth raster.
 ```
-cp hyp.tif hyp_urban.tif
-gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_10m_urban_areas -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_urban.tif
+cp hyp.tif hyp_land.tif
+gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_110m_ocean -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
 ```
 
-<img src="images/hyp_urban.png"/>
+<img src="images/hyp_land.png"/>
 
 Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
 ```
