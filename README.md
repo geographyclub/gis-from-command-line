@@ -9,9 +9,8 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
 1. [Raster](#1-raster)  
     1.1 [Resampling](#11-resampling)  
     1.2 [Reprojecting](#12-reprojecting)  
-    1.3 [Clipping](#13-clipping)  
-    1.4 [Geoprocessing](#14-geoprocessing)  
-    1.5 [Converting](#15-converting)  
+    1.3 [Geoprocessing](#13-geoprocessing)  
+    1.4 [Converting](#14-converting)  
 
 2. [Vector](#2-vector)   
 
@@ -115,7 +114,7 @@ Georeference by ground control points.
 Georeference and transform in one step.  
 ```gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -t_srs 'EPSG:4326' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif```
 
-### 1.3 Clipping
+### 1.3 Geoprocessing
 
 Clip to bounding box using `gdal_translate` or `gdalwarp`.  
 ```gdal_translate -projwin -180 90 0 -90 hyp.tif hyp_west.tif```
@@ -145,21 +144,6 @@ gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pac
 ```
 
 <img src="images/hyp_ocean.png"/>
-
-### 1.4 Geoprocessing
-
-Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
-```
-zfactor=100
-azimuth=315
-altitude=45
-gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade_${zfactor}_${azimuth}_${altitude}.tif
-```
-
-Multiply Natural Earth and shaded relief rasters with `gdal_calc.py`.  
-```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
-
-<img src="images/hyp_hillshade.png"/>
 
 Create a raster mask by keeping values greater than 0.  
 ```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="A*(A>0)"```
@@ -197,7 +181,20 @@ gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_10m_urban_areas -at 
 
 <img src="images/hyp_urban.png"/>
 
-### 1.5 Converting
+Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
+```
+zfactor=100
+azimuth=315
+altitude=45
+gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade_${zfactor}_${azimuth}_${altitude}.tif
+```
+
+Multiply Natural Earth and shaded relief rasters.  
+```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
+
+<img src="images/hyp_hillshade.png"/>
+
+### 1.4 Converting
 
 Use `gdalwarp` to convert from GeoTIFF to regular TIFF (use with programs like imagemagick).  
 ```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' hyp.tif hyp_nogeo.tif```
