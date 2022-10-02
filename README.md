@@ -148,8 +148,12 @@ gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pac
 
 ### 1.4 Geoprocessing
 
-Make an exaggerated shaded relief map from DEM.  
-```gdaldem hillshade -combined -z 100 -s 111120 -az 315 -alt 45 -compute_edges topo.tif topo_hillshade.tif```
+Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
+```
+zfactor=100
+azimuth=315
+altitude=45
+gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade_${zfactor}_${azimuth}_${altitude}.tif```
 
 Multiply Natural Earth and shaded relief rasters with `gdal_calc.py`.  
 ```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
@@ -162,26 +166,29 @@ Create a raster mask by keeping values greater than 0.
 Create a raster mask by setting values greater than 0 to 1.  
 ```gdal_calc.py --overwrite --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="1*(A>0)"```
 
-Clip Natural Earth raster to our mask.  
+Clip Natural Earth raster to the land mask.  
 ```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo_mask.tif -B hyp.tif --allBands B --outfile="hyp_mask.tif" --calc="B*(A>0)"```
 
 <img src="images/hyp_mask.jpg"/>
 
-Add rasters with `gdal_calc.py`.  
+Rasterize vector features selected from Natural Earth geopackage at specified output size.  
+```gdal_rasterize -ts 1920 960 -l ne_10m_admin_1_states_provinces -a mapcolor9 -a_nodata NA -ot Byte -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg states.tif```
+
+Create custom color file and color raster map.  
 ```
-# add where raster A is greater than zero.
-gdal_calc.py --overwrite -A hyp.tif -B hyp.tif --outfile=HYP_HR_SR_OB_DR_1024_512_A_B.tif --calc="((A>0)*A)+B"
-
-# add with logical operator
-gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_100_150.tif --calc="A*logical_and(A>100,A<150)"
+cat > rainbow.cpt <<- EOM
+100% 255 0 0 255
+80% 255 0 255 255
+60% 0 0 255 255
+40% 0 255 255 255
+20% 0 255 0 255
+0% 255 255 0 255
+NA 255 255 255 0
+EOM
+gdaldem color-relief -alpha states.tif rainbow.cpt states_color.tif
 ```
 
-# nodata = NA
-gdal_rasterize PG:"dbname=osm" -tr 100 100 -l ${city}_polygons -a levels -a_nodata NA -where "levels IS NOT NULL" -at ${city}_block100.tif
-# nodata = 0
-gdal_rasterize PG:"dbname=osm" -tr 100 100 -l ${city}_polygons -a levels -where "levels IS NOT NULL" -at ${city}_block100.tif
-
-
+<img src="images/states_color.jpg"/>
 
 ### 1.5 Converting
 
