@@ -80,7 +80,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs ${proj} -te -180 -85 180 80 -te_sr
 Transform from lat-long to van der Grinten projection using PROJ definition.  
 ```
 file='hyp.tif'
-proj='+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m no_defs'
+proj='+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m'
 gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
 ```
 
@@ -130,8 +130,8 @@ Merge our two clipped rasters back together to remake the original.
 Clip to extent of vector geometries.  
 ```
 file='hyp.tif'
-place='North America'
-extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${place}')" | grep '=' | sed -e 's/^.*= //g'))
+continent='North America'
+extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
 gdalwarp -overwrite -ts 1920 0 -te ${extent[*]} ${file} ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
 ```
 
@@ -147,6 +147,14 @@ gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pac
 <img src="images/hyp_ocean.jpg"/>
 
 ### 1.4 Geoprocessing
+
+Make an exaggerated shaded relief map from DEM.  
+```gdaldem hillshade -combined -z 100 -s 111120 -az 315 -alt 45 -compute_edges topo.tif topo_hillshade.tif```
+
+Multiply hypsometric and shaded relief rasters with `gdal_calc`.  
+```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
+
+<img src="images/hyp_hillshade.jpg"/>
 
 Clip to raster mask using `gdal_calc.py`.  
 ```
