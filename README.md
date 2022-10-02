@@ -13,7 +13,7 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
     1.4 [Geoprocessing](#14-geoprocessing)  
     1.5 [Converting](#15-converting)  
 
-2. [Vector](#1-vector)   
+2. [Vector](#2-vector)   
 
 3. [ImageMagick for mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
 
@@ -58,7 +58,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${
 
 <img src="images/hyp_180pm.jpg"/>
 
-Set prime meridian on -180-180° raster by desired placename. Use `ogrinfo` to query a Natural Earth geopackage.  
+Set prime meridian by desired placename. Use `ogrinfo` to query a Natural Earth geopackage.  
 ```
 file='hyp.tif'
 place='Toronto'
@@ -68,7 +68,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${
 
 <img src="images/hyp_281pm.jpg"/>
 
-Transform from lat-long to the popular Web Mercator projection using EPSG code.  
+Transform from lat-long to the popular Web Mercator projection using EPSG code, setting extent between -85* and 80* latitudes.  
 ```
 file='hyp.tif'
 proj='epsg:3857'
@@ -86,7 +86,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(ec
 
 <img src="images/hyp_vandg.jpg"/>
 
-Transform from lat-long to an orthographic projection with a custom PROJ definition. Again use `ogrinfo` to query a Natural Earth geopackage.  
+Transform from lat-long to an orthographic projection with a custom PROJ definition, being careful to set ellipse to sphere. Again use `ogrinfo` to query a Natural Earth geopackage.  
 ```
 file='hyp.tif'
 place='Seoul'
@@ -151,22 +151,21 @@ gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pac
 Make an exaggerated shaded relief map from DEM.  
 ```gdaldem hillshade -combined -z 100 -s 111120 -az 315 -alt 45 -compute_edges topo.tif topo_hillshade.tif```
 
-Multiply hypsometric and shaded relief rasters with `gdal_calc`.  
+Multiply hypsometric and shaded relief rasters with `gdal_calc.py`.  
 ```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
 
 <img src="images/hyp_hillshade.jpg"/>
 
-Clip to raster mask using `gdal_calc.py`.  
-```
-# make raster mask by setting values greater than 0 to 1
-gdal_calc.py --overwrite --type=Int16 --NoDataValue=0 -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_mask.tif --calc="1*(A>0)"
+Create a raster mask by keeping values greater than 0.  
+```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="A*(A>0)"```
 
-# make raster mask by keeping values greater than 0
-gdal_calc.py --overwrite --NoDataValue=0 -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_mask.tif --calc="A*(A>0)"
+Create a raster mask by setting values greater than 0 to 1.  
+```gdal_calc.py --overwrite --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="1*(A>0)"```
 
-# clip to mask
-gdal_calc.py -A HYP_HR_SR_OB_DR_1024_512.tif -B HYP_HR_SR_OB_DR_1024_512_mask.tif --outfile="HYP_HR_SR_OB_DR_1024_512_clipped.tif" --overwrite --type=Float32 --NoDataValue=0 --calc="A*(B>0)"
-```
+Clip hypsometric raster to our mask.  
+```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo_mask.tif -B hyp.tif --allBands B --outfile="hyp_mask.tif" --calc="B*(A>0)"```
+
+<img src="images/hyp_mask.jpg"/>
 
 Add rasters with `gdal_calc.py`.  
 ```
@@ -177,12 +176,21 @@ gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif -B HYP_HR_SR_OB_DR_10
 gdal_calc.py --overwrite -A HYP_HR_SR_OB_DR_1024_512_A.tif --outfile=HYP_HR_SR_OB_DR_1024_512_100_150.tif --calc="A*logical_and(A>100,A<150)"
 ```
 
+# nodata = NA
+gdal_rasterize PG:"dbname=osm" -tr 100 100 -l ${city}_polygons -a levels -a_nodata NA -where "levels IS NOT NULL" -at ${city}_block100.tif
+# nodata = 0
+gdal_rasterize PG:"dbname=osm" -tr 100 100 -l ${city}_polygons -a levels -where "levels IS NOT NULL" -at ${city}_block100.tif
+
+
+
 ### 1.5 Converting
 
-Use `gdal_translate` to convert from GeoTIFF to VRT.  
-```gdal_translate -if 'GTiff' -of 'VRT' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512.vrt```
-
 Use `gdalwarp` to convert from GeoTIFF to regular TIFF (use with programs like imagemagick).  
-```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' HYP_HR_SR_OB_DR_1024_512.tif HYP_HR_SR_OB_DR_1024_512.tif```
+```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' hyp.tif hyp_nogeo.tif```
+
+Use `gdal_translate` to convert from GeoTIFF to JPEG, PNG and other image formats. Use `outsize` to set width and maintain aspect ratio of output image.  
+```gdal_translate -outsize 1920 0 -if 'GTiff' -of 'JPEG' hyp.tif hyp.jpg```
+
+```gdal_translate -outsize 1920 0 -if 'GTiff' -of 'PNG' hyp.tif hyp.png```
 
 ## 2. Vector
