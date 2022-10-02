@@ -2,7 +2,7 @@
 
 GDAL (Geospatial Data Abstraction Library) is a computer software library for reading and writing raster and vector geospatial data formats. But it is much more than that. This is how I use GDAL with a little BASH scripting to make my own *Geographic Information Systems* from the command line.
 
-<img src="images/space_globe_grid.png"/>
+<img src="images/ascii_space.png"/>
 
 ## TABLE OF CONTENTS
 
