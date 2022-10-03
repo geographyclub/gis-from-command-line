@@ -132,11 +132,11 @@ Clip raster to a bounding box using either `gdal_translate` or `gdalwarp`.
 
 Project each hemisphere by its stereographic projection.  
 
-```gdalwarp -overwrite -dstalpha -t_srs '+proj=stere +lat_0=90 +lat_ts_0' hyp_north.tif hyp_north_stere.tif```
+```gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs '+proj=stere +lat_0=90 +lat_ts_0' hyp_north.tif hyp_north_stere.tif```
 
 <img src="images/hyp_north_stere.png"/>
 
-```gdalwarp -overwrite -dstalpha -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' hyp_south.tif hyp_south_stere.tif```
+```gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' hyp_south.tif hyp_south_stere.tif```
 
 <img src="images/hyp_south_stere.png"/>
 
