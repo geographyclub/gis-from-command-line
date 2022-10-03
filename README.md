@@ -105,13 +105,14 @@ gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${
 
 <img src="images/hyp_ortho_31_49.png"/>
 
-Some popular map projections and their PROJ definitions.  
+Some other popular map projections and their PROJ definitions.  
 | Name | PROJ |
 |------|------|
 | Azimuthal Equidistant | +proj=aeqd +lat_0=45 +lon_0=-80 +a=1000000 +b=1000000 +over |
 | Lambert Azimuthal Equal Area | +proj=laea +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m |
-| Van der Grinten | +proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m |
+| Lambert Conformal Conic | +proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45 |
 | Stereographic | +proj=stere +lon_0=-119 +lat_0=36 +lat_ts=36 |
+| Van der Grinten | +proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m |
 
 Georeference by extent.  
 ```gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
@@ -124,22 +125,27 @@ Georeference and transform in one step.
 
 ### 1.3 Geoprocessing
 
-Clip to bounding box using `gdal_translate` or `gdalwarp`.  
-```gdal_translate -projwin -180 90 0 -90 hyp.tif hyp_west.tif```
+Clip raster to a bounding box using either `gdal_translate` or `gdalwarp`.  
+```gdal_translate -projwin -180 90 180 0 hyp.tif hyp_north.tif```
 
-```gdalwarp -overwrite -te 0 -90 180 90 hyp.tif hyp_east.tif```
+```gdalwarp -overwrite -te -180 -90 180 0 hyp.tif hyp_south.tif```
 
-Merge our two clipped rasters back together to remake the original.  
-```gdal_merge.py -o hyp_east_west.tif hyp_east.tif hyp_west.tif```
+Project each hemisphere by its stereographic projection.  
 
-<img src="images/hyp_east_west.png"/>
+```gdalwarp -overwrite -t_srs '+proj=stere +lat_0=90 +lat_ts_0' hyp_north.tif hyp_north_stere.tif```
 
-Clip to extent of vector geometries.  
+<img src="images/hyp_north_stere.png"/>
+
+```gdalwarp -overwrite -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' hyp_south.tif hyp_south_stere.tif```
+
+<img src="images/hyp_south_stere.png"/>
+
+Clip to extent of vector geometries. Use a North America Lambert Conformal Conic projection here.  
 ```
 file='hyp.tif'
 continent='North America'
 extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -overwrite -ts 1920 0 -te ${extent[*]} ${file} ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
+gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -ts 1920 0 -t_srs 'ESRI:102010' /vsistdin/ ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
 ```
 
 <img src="images/hyp_extent_-172_7_-12_84.png"/>
@@ -161,6 +167,19 @@ Create a raster mask by setting values greater than 0 to 1.
 
 Clip Natural Earth raster to the land mask.  
 ```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo_mask.tif -B hyp.tif --allBands B --outfile="hyp_mask.tif" --calc="B*(A>0)"```
+
+Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
+```
+zfactor=100
+azimuth=315
+altitude=45
+gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade_${zfactor}_${azimuth}_${altitude}.tif
+```
+
+Multiply Natural Earth and shaded relief rasters.  
+```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
+
+<img src="images/hyp_hillshade.png"/>
 
 <img src="images/hyp_mask.png"/>
 
@@ -188,19 +207,6 @@ gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_110m_ocean -at /home
 ```
 
 <img src="images/hyp_land.png"/>
-
-Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
-```
-zfactor=100
-azimuth=315
-altitude=45
-gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade_${zfactor}_${azimuth}_${altitude}.tif
-```
-
-Multiply Natural Earth and shaded relief rasters.  
-```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
-
-<img src="images/hyp_hillshade.png"/>
 
 ### 1.4 Converting
 
@@ -230,15 +236,6 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 
 <img src="images/coastline_epsg_3857.svg"/>
 
-Transform from lat-long to the Times projection using PROJ definition.  
-```
-file='coastline.gpkg'
-proj='+proj=times'
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -179 -90 179 90 -t_srs "${proj}" ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".gpkg ${file}
-```
-
-<img src="images/coastline_times.svg"/>
-
 Transform from lat-long to an orthographic projection with a custom PROJ definition.  
 ```
 file='coastline.gpkg'
@@ -259,9 +256,16 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 
 <img src="images/coastline_ortho_31_49.svg"/>
 
+### Geoprocessing
+
+Clip feature by grid.  
+```
+
+```
+
 ### Converting
 
-Convert vector layer to svg file using `ogrinfo` to get extent and `AsSVG` to write paths.  
+Convert vector layer to svg file using `ogrinfo` to get extent and `AsSVG` to write paths. These are the vector examples shown here.  
 ```
 file='coastline.gpkg'
 layer='coastline'
