@@ -105,6 +105,14 @@ gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${
 
 <img src="images/hyp_ortho_31_49.png"/>
 
+Some popular map projections and their PROJ definitions.  
+| Name | PROJ |
+|------|------|
+| Azimuthal Equidistant | +proj=aeqd +lat_0=45 +lon_0=-80 +a=1000000 +b=1000000 +over |
+| Lambert Azimuthal Equal Area | +proj=laea +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m |
+| Van der Grinten | +proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m |
+| Stereographic | +proj=stere +lon_0=-119 +lat_0=36 +lat_ts=36 |
+
 Georeference by extent.  
 ```gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
 
@@ -213,15 +221,23 @@ Select the 110m coastline from the Natural Earth geopackage. This will be our ex
 
 <img src="images/coastline.svg"/>
 
-Transform the coastline from lat-long to Azimuthal Equidistant projection.  
-```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=aeqd +lat_0=45 +lon_0=-80 +a=1000000 +b=1000000 +over +no_defs' coastline_aeqd.gpkg coastline.gpkg coastline```
+Transform from lat-long to the Web Mercator projection using EPSG code as we did with the raster, this time using `ogr2ogr`.  
+```
+file='coastline.gpkg'
+proj='epsg:3857'
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs ${proj} -spat -179 -85 179 80 ${file%.*}_"${proj//:/_}".gpkg ${file}
+```
 
-<img src="images/coastline_aeqd.svg"/>
+<img src="images/coastline_epsg_3857.svg"/>
 
-Transform from lat-long to Lambert Azimuthal Equal Area projection.  
-```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=laea +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs' coastline_laea.gpkg coastline.gpkg coastline```
+Transform from lat-long to the Times projection using PROJ definition.  
+```
+file='coastline.gpkg'
+proj='+proj=times'
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -179 -90 179 90 -t_srs "${proj}" ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".gpkg ${file}
+```
 
-<img src="images/coastline_laea.svg"/>
+<img src="images/coastline_times.svg"/>
 
 Transform from lat-long to an orthographic projection with a custom PROJ definition.  
 ```
