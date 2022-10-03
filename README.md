@@ -208,7 +208,12 @@ Use `gdal_translate` to convert from GeoTIFF to JPEG, PNG and other image format
 
 ### 2.1 Reprojecting
 
-Transforming Natural Earth land vector from lat-long to Azimuthal Equidistant projection.  
+Select the 110m land layer from the Natural Earth geopackage. This will be our example vector.  
+```ogr2ogr -overwrite ne_110m_land.gpkg /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg ne_110m_land```
+
+<img src="images/ne_110m_land.svg"/>
+
+Transforming the Natural Earth land vector from lat-long to Azimuthal Equidistant projection.  
 ```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -180 -80 180 80 -s_srs 'EPSG:4326' -t_srs '+proj=aeqd +lat_0=45 +lon_0=-80 +a=1000000 +b=1000000 +over +no_defs' ne_110m_land_aeqd.gpkg /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg ne_110m_land```
 
 <img src="images/ne_110m_land_aeqd.svg"/>
