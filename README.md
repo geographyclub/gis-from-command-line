@@ -125,18 +125,12 @@ Georeference and transform in one step.
 
 ### 1.3 Geoprocessing
 
-Clip raster to a bounding box using either `gdal_translate` or `gdalwarp`.  
-```gdal_translate -projwin -180 90 180 0 hyp.tif hyp_north.tif```
-
-```gdalwarp -overwrite -dstalpha -te -180 -90 180 0 hyp.tif hyp_south.tif```
-
-Project each hemisphere by its stereographic projection.  
-
-```gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs '+proj=stere +lat_0=90 +lat_ts_0' hyp_north.tif hyp_north_stere.tif```
+Clip raster to a bounding box using either `gdal_translate` or `gdalwarp`. Project each hemisphere by its stereographic projection.  
+```gdal_translate -projwin -180 90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ hyp_north_stere.tif```
 
 <img src="images/hyp_north_stere.png"/>
 
-```gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' hyp_south.tif hyp_south_stere.tif```
+```gdalwarp -te -180 -90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' /vsistdin/ hyp_south_stere.tif```
 
 <img src="images/hyp_south_stere.png"/>
 
@@ -145,7 +139,7 @@ Clip to extent of vector geometries. Use a North America Lambert Conformal Conic
 file='hyp.tif'
 continent='North America'
 extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -dstalpha -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs 'ESRI:102010' /vsistdin/ ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
+gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs 'ESRI:102010' /vsistdin/ ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
 ```
 
 <img src="images/hyp_extent_-172_7_-12_84.png"/>
@@ -168,6 +162,8 @@ Create a raster mask by setting values greater than 0 to 1.
 Clip Natural Earth raster to the land mask.  
 ```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo_mask.tif -B hyp.tif --allBands B --outfile="hyp_mask.tif" --calc="B*(A>0)"```
 
+<img src="images/hyp_mask.png"/>
+
 Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
 ```
 zfactor=100
@@ -180,8 +176,6 @@ Multiply Natural Earth and shaded relief rasters.
 ```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
 
 <img src="images/hyp_hillshade.png"/>
-
-<img src="images/hyp_mask.png"/>
 
 Rasterize a vector feature attribute selected from the Natural Earth geopackage.  
 ```gdal_rasterize -ts 1920 960 -te -180 -90 180 90 -l ne_110m_admin_0_countries_lakes -a mapcolor9 -a_nodata NA -ot Byte -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg countries.tif```
