@@ -181,14 +181,15 @@ Rasterize vector feature with *order_* attribute selected from the WWF BasinATLA
 
 Create custom color file and color raster map.  
 ```
-cat > greyoclock.cpt <<- EOM
-0% 118 147 142 255
-25% 152 177 179
-50% 192 203 206
-100% 217 217 217 255
+cat > oslo.cpt <<- EOM
+0% 16 41 65
+25% 38 87 140
+50% 107 142 200
+75% 168 180 202
+100% 241 241 242
 NA 255 255 255 0
 EOM
-gdaldem color-relief -alpha basin6.tif greyoclock.cpt basin6_color.tif
+gdaldem color-relief -alpha basin6.tif oslo.cpt basin6_color.tif
 ```
 
 <img src="images/basin6_color.png"/>
