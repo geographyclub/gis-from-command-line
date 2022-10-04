@@ -1,5 +1,4 @@
 # GIS FROM COMMAND LINE
-<sup>BASH-GIS</sup>
 
 This is how I use open source Linux software and a little BASH scripting to make my own *Geographic Information Systems* from the command line. I compiled and illustrated some of the most common tasks and a few extras I came up with over the years.
 
@@ -25,7 +24,7 @@ This is how I use open source Linux software and a little BASH scripting to make
 
 ## 1. Raster
 
-GDAL (Geospatial Data Abstraction Library) is a computer software library for reading and writing raster and vector geospatial data formats. But it is much more than that. This is how I get the most out of GDAL tools and their better options.
+GDAL (Geospatial Data Abstraction Library) is a computer software library for reading and writing raster and vector geospatial data formats. But it is much more than that. This is how I get the most out of GDAL tools and their extensive options.
 
 ### 1.1 Resampling
 
@@ -153,7 +152,7 @@ Clip to vector geometry directly with *gdalwarp* with *crop_to_cutline* option.
 ```
 file='hyp.tif'
 featurecla='Ocean'
-gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT geom FROM ne_110m_ocean WHERE featurecla = '${featurecla}'" hyp.tif hyp_${featurecla,,}.tif
+gdalwarp -overwrite -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT geom FROM ne_110m_ocean WHERE featurecla = '${featurecla}'" hyp.tif hyp_${featurecla,,}.tif
 ```
 
 <img src="images/hyp_ocean.png"/>
@@ -177,22 +176,22 @@ gdal_rasterize -at -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 255 -l ne_110m_ocean /ho
 
 <img src="images/hyp_land.png"/>
 
-Rasterize vector feature with attribute selected from Natural Earth bathymetry.  
-```gdal_rasterize -at -ts 1920 960 -te -180 -90 180 90 -l bathymetry -a scalerank -a_nodata NA -where 'depth >= 0' /home/steve/maps/naturalearth/ne_10m_bathymetry/ne_10m_bathymetry_all.gpkg bathymetry.tif```
+Rasterize vector feature with *order_* attribute selected from the WWF BasinATLAS dataset.  
+```gdal_rasterize -at -ot byte -ts 1920 960 -te -180 -90 180 90 -a ORDER_ -l BasinATLAS_v10_lev06 -a_nodata NA /home/steve/maps/wwf/hydroatlas//BasinATLAS_v10.gdb basin6.tif```
 
 Create custom color file and color raster map.  
 ```
 cat > greyoclock.cpt <<- EOM
-100% 118 147 142 255
-50% 152 177 179
-25% 192 203 206
-0% 217 217 217 255
+0% 118 147 142 255
+25% 152 177 179
+50% 192 203 206
+100% 217 217 217 255
 NA 255 255 255 0
 EOM
-gdaldem color-relief -alpha regions.tif greyoclock.cpt regions_color.tif
+gdaldem color-relief -alpha basin6.tif greyoclock.cpt basin6_color.tif
 ```
 
-<img src="images/bathymetry_color.png"/>
+<img src="images/basin6_color.png"/>
 
 Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
 ```
