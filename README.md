@@ -156,26 +156,26 @@ gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pac
 <img src="images/hyp_ocean.png"/>
 
 Create a raster mask by keeping values greater than 0 using *gdal_calc*.  
-```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="A*(A>0)"```
+```gdal_calc.py --overwrite --type=byte --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="A*(A>0)"```
 
 Create a raster mask by setting values greater than 0 to 1.  
 ```gdal_calc.py --overwrite --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="1*(A>0)"```
 
 Clip Natural Earth raster to the land mask.  
-```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo_mask.tif -B hyp.tif --allBands B --outfile="hyp_mask.tif" --calc="B*(A>0)"```
+```gdal_calc.py --overwrite --type=byte --NoDataValue=0 -A topo_mask.tif -B hyp.tif --allBands B --outfile="hyp_mask.tif" --calc="B*(A>0)"```
 
 <img src="images/hyp_mask.png"/>
 
 Rasterize vector feature and burn in value directly into bands of the Natural Earth raster.
 ```
-cp hyp.tif hyp_ocean.tif
-gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 255 -l ne_110m_ocean -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_ocean.tif
+cp hyp.tif hyp_land.tif
+gdal_rasterize -at -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 255 -l ne_110m_ocean /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
 ```
 
-<img src="images/hyp_ocean.png"/>
+<img src="images/hyp_land.png"/>
 
 Rasterize vector feature with attribute selected from the Natural Earth geopackage.  
-```gdal_rasterize -ts 1920 960 -te -180 -90 180 90 -l ne_110m_admin_0_countries_lakes -a mapcolor9 -a_nodata NA -ot Byte -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg countries.tif```
+```gdal_rasterize -at -ot byte -ts 1920 960 -te -180 -90 180 90 -l ne_110m_admin_0_countries_lakes -a mapcolor9 -a_nodata NA /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg countries.tif```
 
 Create custom color file and color raster map.  
 ```
