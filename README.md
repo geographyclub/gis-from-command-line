@@ -164,20 +164,7 @@ Clip Natural Earth raster to the land mask.
 
 <img src="images/hyp_mask.png"/>
 
-Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
-```
-zfactor=100
-azimuth=315
-altitude=45
-gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade_${zfactor}_${azimuth}_${altitude}.tif
-```
-
-Multiply Natural Earth and shaded relief rasters.  
-```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
-
-<img src="images/hyp_hillshade.png"/>
-
-Rasterize vector feature and burn in value into the Natural Earth raster.
+Rasterize vector feature and burn in value directly into the Natural Earth raster.
 ```
 cp hyp.tif hyp_land.tif
 gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_110m_ocean -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
@@ -201,6 +188,19 @@ gdaldem color-relief -alpha countries.tif greyoclock.cpt countries_color.tif
 ```
 
 <img src="images/countries_color.png"/>
+
+Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
+```
+zfactor=100
+azimuth=315
+altitude=45
+gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade_${zfactor}_${azimuth}_${altitude}.tif
+```
+
+Multiply Natural Earth and shaded relief rasters.  
+```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
+
+<img src="images/hyp_hillshade.png"/>
 
 ### 1.4 Converting
 
