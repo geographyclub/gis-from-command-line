@@ -40,7 +40,7 @@ ls *.tif | while read file; do
 done
 ```
 
-Resize raster as a fraction of its original size using output from `gdalinfo`.  
+Resize raster as a fraction of its original size using output from *gdalinfo*.  
 ```gdalwarp -overwrite -ts $(echo $(gdalinfo hyp.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline hyp.tif hyp_192.tif```
 
 ### 1.2 Reprojecting
@@ -57,7 +57,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${
 
 <img src="images/hyp_180pm.png"/>
 
-Set prime meridian by desired placename. Use `ogrinfo` to query a Natural Earth geopackage.  
+Set prime meridian by desired placename. Use *ogrinfo* to query a Natural Earth geopackage.  
 ```
 file='hyp.tif'
 place='Toronto'
@@ -85,7 +85,7 @@ gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file
 
 <img src="images/hyp_times.png"/>
 
-Transform from lat-long to an orthographic projection with a custom PROJ definition. Again use `ogrinfo` to query a Natural Earth geopackage.  
+Transform from lat-long to an orthographic projection with a custom PROJ definition. Again use *ogrinfo* to query a Natural Earth geopackage.  
 ```
 file='hyp.tif'
 place='Seoul'
@@ -125,7 +125,7 @@ Georeference and transform in one step.
 
 ### 1.3 Geoprocessing
 
-Clip raster to a bounding box using either `gdal_translate` or `gdalwarp`. Project each hemisphere by its stereographic projection.  
+Clip raster to a bounding box using either *gdal_translate* or *gdalwarp*. Use the appropriate stereographic projection for each hemisphere.  
 ```gdal_translate -projwin -180 90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ hyp_north_stere.tif```
 
 <img src="images/hyp_north_stere.png"/>
@@ -134,7 +134,7 @@ Clip raster to a bounding box using either `gdal_translate` or `gdalwarp`. Proje
 
 <img src="images/hyp_south_stere.png"/>
 
-Clip to extent of vector geometries. Use a North America Lambert Conformal Conic projection here.  
+Clip raster to extent of vector geometries. Use North America Lambert Conformal Conic projection here.  
 ```
 file='hyp.tif'
 continent='North America'
@@ -144,7 +144,7 @@ gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha -t
 
 <img src="images/hyp_extent_-172_7_-12_84.png"/>
 
-Clip to vector geometry with `crop_to_cutline` option.  
+Clip to vector geometry directly with *gdalwarp* with *crop_to_cutline* option.  
 ```
 file='hyp.tif'
 featurecla='Ocean'
@@ -153,7 +153,7 @@ gdalwarp -overwrite -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pac
 
 <img src="images/hyp_ocean.png"/>
 
-Create a raster mask by keeping values greater than 0.  
+Create a raster mask by keeping values greater than 0 using *gdal_calc*.  
 ```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="A*(A>0)"```
 
 Create a raster mask by setting values greater than 0 to 1.  
@@ -177,7 +177,15 @@ Multiply Natural Earth and shaded relief rasters.
 
 <img src="images/hyp_hillshade.png"/>
 
-Rasterize a vector feature attribute selected from the Natural Earth geopackage.  
+Rasterize vector feature and burn in value into the Natural Earth raster.
+```
+cp hyp.tif hyp_land.tif
+gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_110m_ocean -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
+```
+
+<img src="images/hyp_land.png"/>
+
+Rasterize vector feature with attribute selected from the Natural Earth geopackage.  
 ```gdal_rasterize -ts 1920 960 -te -180 -90 180 90 -l ne_110m_admin_0_countries_lakes -a mapcolor9 -a_nodata NA -ot Byte -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg countries.tif```
 
 Create custom color file and color raster map.  
@@ -194,20 +202,12 @@ gdaldem color-relief -alpha countries.tif greyoclock.cpt countries_color.tif
 
 <img src="images/countries_color.png"/>
 
-Burn in value from a vector feature into the Natural Earth raster.
-```
-cp hyp.tif hyp_land.tif
-gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_110m_ocean -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
-```
-
-<img src="images/hyp_land.png"/>
-
 ### 1.4 Converting
 
-Use `gdalwarp` to convert from GeoTIFF to regular TIFF (use with programs like imagemagick).  
+Use *gdalwarp* to convert from GeoTIFF to regular TIFF (use with programs like imagemagick).  
 ```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' hyp.tif hyp_nogeo.tif```
 
-Use `gdal_translate` to convert from GeoTIFF to JPEG, PNG and other image formats. Use `outsize` to set width and maintain aspect ratio of output image.  
+Use *gdal_translate* to convert from GeoTIFF to JPEG, PNG and other image formats. Use *outsize* to set width and maintain aspect ratio of output image.  
 ```gdal_translate -outsize 1920 0 -if 'GTiff' -of 'JPEG' hyp.tif hyp.png```
 
 ```gdal_translate -outsize 1920 0 -if 'GTiff' -of 'PNG' hyp.tif hyp.png```
@@ -221,7 +221,7 @@ Select the 110m coastline from the Natural Earth geopackage. This will be our ex
 
 <img src="images/coastline.svg"/>
 
-Transform from lat-long to the Web Mercator projection using EPSG code as we did with the raster, this time using `ogr2ogr`.  
+Transform from lat-long to the Web Mercator projection using EPSG code as we did with the raster, this time using *ogr2ogr*.  
 ```
 file='coastline.gpkg'
 proj='epsg:3857'
@@ -259,7 +259,7 @@ Clip feature by grid.
 
 ### Converting
 
-Convert vector layer to svg file using `ogrinfo` to get extent and `AsSVG` to write paths. These are the vector examples shown here.  
+Convert vector layer to svg file using *ogrinfo* to get extent and *AsSVG* to write paths. These are the vector examples shown here.  
 ```
 file='coastline.gpkg'
 layer='coastline'
