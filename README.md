@@ -182,9 +182,8 @@ Rasterize vector feature with *order_* attribute selected from the WWF BasinATLA
 Create custom color file and color raster map.  
 ```
 cat > oslo.cpt <<- EOM
-0% 16 41 65
-25% 38 87 140
-50% 107 142 200
+0% 38 87 140
+25% 107 142 200
 75% 168 180 202
 100% 241 241 242
 NA 255 255 255 0
@@ -223,12 +222,12 @@ Use *gdal_translate* to convert from GeoTIFF to JPEG, PNG and other image format
 
 ### 2.1 Selecting
 
-Select some vector layers created from the Natural Earth geopackage. These will be our example layers.  
+Select some vector layers processed from the Natural Earth geopackage. These will be our example layers.  
 ```ogr2ogr -overwrite vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
 
 <img src="images/countries.svg"/>
 
-Use *update* to add layers to the existing geopackage.  
+Use *update* to add layers to our geopackage.  
 ```ogr2ogr -update vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_coastline_split1.gpkg coastline```
 
 <img src="images/coastline.svg"/>
@@ -275,17 +274,16 @@ Clip feature by grid.
 
 Convert vector layer to svg file using *ogrinfo* to get extent and *AsSVG* to write paths. These are the vector examples shown here.  
 ```
-file='coastline.gpkg'
-layer='coastline'
+file='vectors.gpkg'
+layer='countries'
 width=1920
 height=960
 
 ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_MaxY(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxX(extent(geom)) - ST_MinX(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxY(extent(geom)) - ST_MinY(extent(geom))) FROM ${layer}" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
-echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > ${file%.*}.svg
+echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > ${layer}.svg
 done
 ogrinfo -dialect sqlite -sql "SELECT AsSVG(geom, 1) FROM ${layer}" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
-  echo '<path d="'${array[0]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#000" stroke-width="1px" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
+  echo '<path d="'${array[0]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#000" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> ${layer}.svg
 done
-echo '</svg>' >> ${file%.*}.svg
-
+echo '</svg>' >> ${layer}.svg
 ```
