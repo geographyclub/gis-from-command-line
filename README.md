@@ -1,6 +1,7 @@
 # GIS FROM COMMAND LINE
+<sup>BASH-GIS</sup>
 
-GDAL (Geospatial Data Abstraction Library) is a computer software library for reading and writing raster and vector geospatial data formats. But it is much more than that. This is how I use GDAL with a little BASH scripting to make my own *Geographic Information Systems* from the command line.
+This is how I use open source Linux software and a little BASH scripting to make my own *Geographic Information Systems* from the command line. I compiled and illustrated some of the most common tasks and a few extras I came up with over the years.
 
 <img src="images/ascii_space.png"/>
 
@@ -23,6 +24,8 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
 5. [Web mapping - census data](https://github.com/geographyclub/american-geography#readme)
 
 ## 1. Raster
+
+GDAL (Geospatial Data Abstraction Library) is a computer software library for reading and writing raster and vector geospatial data formats. But it is much more than that. This is how I get the most out of GDAL tools and their better options.
 
 ### 1.1 Resampling
 
@@ -174,8 +177,8 @@ gdal_rasterize -at -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 255 -l ne_110m_ocean /ho
 
 <img src="images/hyp_land.png"/>
 
-Rasterize vector feature with attribute selected from the Natural Earth geopackage.  
-```gdal_rasterize -at -ot byte -ts 1920 960 -te -180 -90 180 90 -l ne_110m_admin_0_countries_lakes -a mapcolor9 -a_nodata NA /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg countries.tif```
+Rasterize vector feature with attribute selected from Natural Earth bathymetry.  
+```gdal_rasterize -at -ts 1920 960 -te -180 -90 180 90 -l bathymetry -a scalerank -a_nodata NA -where 'depth >= 0' /home/steve/maps/naturalearth/ne_10m_bathymetry/ne_10m_bathymetry_all.gpkg bathymetry.tif```
 
 Create custom color file and color raster map.  
 ```
@@ -186,10 +189,10 @@ cat > greyoclock.cpt <<- EOM
 0% 217 217 217 255
 NA 255 255 255 0
 EOM
-gdaldem color-relief -alpha countries.tif greyoclock.cpt countries_color.tif
+gdaldem color-relief -alpha regions.tif greyoclock.cpt regions_color.tif
 ```
 
-<img src="images/countries_color.png"/>
+<img src="images/bathymetry_color.png"/>
 
 Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
 ```
@@ -225,10 +228,14 @@ Select some vector layers created from the Natural Earth geopackage. These will 
 
 <img src="images/countries.svg"/>
 
+Use *update* to add layers to the existing geopackage.  
+```ogr2ogr -update vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_coastline_split1.gpkg coastline```
+
+<img src="images/coastline.svg"/>
 
 ### 2.2 Reprojecting
 
-Transform from lat-long to the Web Mercator projection using EPSG code as we did with the raster, this time using *ogr2ogr*.  
+Transform from lat-long to the Web Mercator projection using EPSG code, this time using *ogr2ogr*.  
 ```
 file='countries.gpkg'
 proj='epsg:3857'
