@@ -228,40 +228,31 @@ Select some vector layers processed from the Natural Earth geopackage. These wil
 <img src="images/countries.svg"/>
 
 Use *update* to add layers to our geopackage.  
-```ogr2ogr -update vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_coastline_split1.gpkg coastline```
-
-<img src="images/coastline.svg"/>
+```ogr2ogr -overwrite -update vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_coastline_split1.gpkg coastline```
 
 ### 2.2 Reprojecting
 
-Transform from lat-long to the Web Mercator projection using EPSG code, this time using *ogr2ogr*.  
+Transform from lat-long to an orthographic projection, this time using *ogr2ogr* for vectors.  
 ```
-file='countries.gpkg'
-proj='epsg:3857'
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs ${proj} -spat -179 -85 179 80 ${file%.*}_"${proj//:/_}".gpkg ${file}
-```
-
-<img src="images/countries_epsg_3857.svg"/>
-
-Transform from lat-long to an orthographic projection with a custom PROJ definition.  
-```
-file='countries.gpkg'
-place='Seoul'
+file='vectors.gpkg'
+layer='countries'
+place='Cairo'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${place}'" | grep '=' | sed -e 's/^.*= //g'))
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} 
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
 ```
 
-<img src="images/countries_ortho_127_38.svg"/>
+<img src="images/countries_ortho_31_30"/>
 
-Center the orthographic projection on the centroid of a country using the same method.  
+Center the orthographic projection on the centroid of a country.  
 ```
-file='countries.gpkg'
-place='Ukraine'
+file='vectors.gpkg'
+layer='countries'
+place='Brazil'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${place}'" | grep '=' | sed -e 's/^.*= //g'))
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file}
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
 ```
 
-<img src="images/countries_ortho_31_49.svg"/>
+<img src="images/countries_ortho_-53_-11.svg"/>
 
 ### Geoprocessing
 
@@ -280,10 +271,10 @@ width=1920
 height=960
 
 ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_MaxY(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxX(extent(geom)) - ST_MinX(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxY(extent(geom)) - ST_MinY(extent(geom))) FROM ${layer}" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
-echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > ${layer}.svg
+echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > ${file%.*}.svg
 done
 ogrinfo -dialect sqlite -sql "SELECT AsSVG(geom, 1) FROM ${layer}" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
-  echo '<path d="'${array[0]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#000" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> ${layer}.svg
+  echo '<path d="'${array[0]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#000" stroke-width="0.4px" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
 done
-echo '</svg>' >> ${layer}.svg
+echo '</svg>' >> ${file%.*}.svg
 ```
