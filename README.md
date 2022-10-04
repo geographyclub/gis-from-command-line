@@ -12,7 +12,9 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
     1.3 [Geoprocessing](#13-geoprocessing)  
     1.4 [Converting](#14-converting)  
 
-2. [Vector](#2-vector)   
+2. [Vector](#2-vector)  
+    2.1 [Selecting](#21-selecting)  
+    2.2 [Reprojecting](#22-reprojecting)  
 
 3. [ImageMagick for mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
 
@@ -164,13 +166,13 @@ Clip Natural Earth raster to the land mask.
 
 <img src="images/hyp_mask.png"/>
 
-Rasterize vector feature and burn in value directly into the Natural Earth raster.
+Rasterize vector feature and burn in value directly into bands of the Natural Earth raster.
 ```
-cp hyp.tif hyp_land.tif
-gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_110m_ocean -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
+cp hyp.tif hyp_ocean.tif
+gdal_rasterize -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 255 -l ne_110m_ocean -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_ocean.tif
 ```
 
-<img src="images/hyp_land.png"/>
+<img src="images/hyp_ocean.png"/>
 
 Rasterize vector feature with attribute selected from the Natural Earth geopackage.  
 ```gdal_rasterize -ts 1920 960 -te -180 -90 180 90 -l ne_110m_admin_0_countries_lakes -a mapcolor9 -a_nodata NA -ot Byte -at /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg countries.tif```
@@ -194,8 +196,10 @@ Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.
 zfactor=100
 azimuth=315
 altitude=45
-gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade_${zfactor}_${azimuth}_${altitude}.tif
+gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade.tif
 ```
+
+<img src="images/topo_hillshade.png"/>
 
 Multiply Natural Earth and shaded relief rasters.  
 ```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
@@ -214,12 +218,15 @@ Use *gdal_translate* to convert from GeoTIFF to JPEG, PNG and other image format
 
 ## 2. Vector
 
-### 2.1 Reprojecting
+### 2.1 Selecting
 
-Select 110m country lines processed from the Natural Earth geopackage. This will be our example vector.  
-```ogr2ogr -overwrite countries.gpkg /home/steve/maps/naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
+Select some vector layers created from the Natural Earth geopackage. These will be our example layers.  
+```ogr2ogr -overwrite vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
 
 <img src="images/countries.svg"/>
+
+
+### 2.2 Reprojecting
 
 Transform from lat-long to the Web Mercator projection using EPSG code as we did with the raster, this time using *ogr2ogr*.  
 ```
