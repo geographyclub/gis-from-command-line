@@ -18,9 +18,9 @@ This is how I use open source Linux software and a little BASH scripting to make
 
 3. [ImageMagick for mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
 
-4. [Animating maps - weather data](https://github.com/geographyclub/weather-to-video)
+4. [Scripting it all together: weather data](https://github.com/geographyclub/weather-to-video)
 
-5. [Web mapping - census data](https://github.com/geographyclub/american-geography#readme)
+5. [PostGIS + Leaflet: census data](https://github.com/geographyclub/american-geography#readme)
 
 ## 1. Raster
 
