@@ -241,7 +241,7 @@ xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -
 ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
 ```
 
-<img src="images/countries_ortho_31_30"/>
+<img src="images/countries_ortho_31_30.svg"/>
 
 Center the orthographic projection on the centroid of a country.  
 ```
