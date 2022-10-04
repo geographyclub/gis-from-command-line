@@ -216,39 +216,39 @@ Use *gdal_translate* to convert from GeoTIFF to JPEG, PNG and other image format
 
 ### 2.1 Reprojecting
 
-Select the 110m coastline from the Natural Earth geopackage. This will be our example vector.  
-```ogr2ogr -overwrite coastline.gpkg /home/steve/maps/naturalearth/packages/ne_110m_coastline_split1.gpkg coastline```
+Select 110m country lines processed from the Natural Earth geopackage. This will be our example vector.  
+```ogr2ogr -overwrite countries.gpkg /home/steve/maps/naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
 
-<img src="images/coastline.svg"/>
+<img src="images/countries.svg"/>
 
 Transform from lat-long to the Web Mercator projection using EPSG code as we did with the raster, this time using *ogr2ogr*.  
 ```
-file='coastline.gpkg'
+file='countries.gpkg'
 proj='epsg:3857'
 ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs ${proj} -spat -179 -85 179 80 ${file%.*}_"${proj//:/_}".gpkg ${file}
 ```
 
-<img src="images/coastline_epsg_3857.svg"/>
+<img src="images/countries_epsg_3857.svg"/>
 
 Transform from lat-long to an orthographic projection with a custom PROJ definition.  
 ```
-file='coastline.gpkg'
+file='countries.gpkg'
 place='Seoul'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${place}'" | grep '=' | sed -e 's/^.*= //g'))
 ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} 
 ```
 
-<img src="images/coastline_ortho_127_38.svg"/>
+<img src="images/countries_ortho_127_38.svg"/>
 
 Center the orthographic projection on the centroid of a country using the same method.  
 ```
-file='coastline.gpkg'
+file='countries.gpkg'
 place='Ukraine'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${place}'" | grep '=' | sed -e 's/^.*= //g'))
 ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file}
 ```
 
-<img src="images/coastline_ortho_31_49.svg"/>
+<img src="images/countries_ortho_31_49.svg"/>
 
 ### Geoprocessing
 
