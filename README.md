@@ -16,11 +16,11 @@ This is how I use a few open source Linux tools and a little BASH scripting to m
     2.1 [Selecting](#21-selecting)  
     2.2 [Reprojecting](#22-reprojecting)  
 
-3. [ImageMagick for mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
+3. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
 
-4. [From download to video: weather data](https://github.com/geographyclub/weather-to-video)
+4. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)
 
-5. [PostGIS + Leaflet: census data](https://github.com/geographyclub/american-geography#readme)
+5. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)
 
 ## 1. Raster
 
