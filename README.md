@@ -162,10 +162,20 @@ gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_10m_rivers_lake_
 
 <img src="images/hyp_land.png"/>
 
-Rasterize vector feature with *order_* attribute selected from the WWF BasinATLAS dataset.  
+Rasterize vector features with attribute selected from the WWF BasinATLAS dataset.  
 ```gdal_rasterize -at -ts 1920 960 -te -180 -90 180 90 -a ORDER_ -l BasinATLAS_v10_lev08 -a_nodata NA /home/steve/maps/wwf/hydroatlas/BasinATLAS_v10.gdb basin8.tif```
 
-```gdaldem color-relief -alpha basin8.tif oslo.cpt basin8_color.tif```
+Create a color file and color the raster.  
+```bash
+cat > greyoclock.cpt <<- EOM
+0% 118 147 142 255
+25% 152 177 179
+75% 192 203 206
+100% 217 217 217 255
+NA 255 255 255 0
+EOM
+gdaldem color-relief -alpha basin8.tif greyoclock.cpt basin8_color.tif
+```
 
 <img src="images/basin8_color.png"/>
 
