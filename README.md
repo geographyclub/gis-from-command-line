@@ -160,12 +160,12 @@ gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_110m_coastline /
 gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_10m_rivers_lake_centerlines /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
 
 file='hyp_land.tif'
-name='Rome'
+name='Mexico City'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
 gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
-<img src="images/hyp_land_ortho_12_42.png"/>
+<img src="images/hyp_land.png"/>
 
 Rasterize vector feature with *order_* attribute selected from the WWF BasinATLAS dataset.  
 ```gdal_rasterize -at -ts 1920 960 -te -180 -90 180 90 -a ORDER_ -l BasinATLAS_v10_lev08 -a_nodata NA /home/steve/maps/wwf/hydroatlas/BasinATLAS_v10.gdb basin8.tif```
