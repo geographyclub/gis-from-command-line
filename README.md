@@ -37,13 +37,6 @@ gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} hyp.tif
 
 <img src="images/hyp.png"/>
 
-Resize and convert all geotiffs in the folder to png. These will be our example thumbnails.  
-```bash
-ls *.tif | while read file; do
-  gdal_translate -of 'PNG' -outsize 1920 0 ${file} ${file%.*}.png
-done
-```
-
 Resize raster as a fraction of its original size using output from *gdalinfo*.  
 ```gdalwarp -overwrite -ts $(echo $(gdalinfo hyp.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline hyp.tif hyp_192.tif```
 
@@ -159,17 +152,19 @@ gdalwarp -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pack
 <img src="images/hyp_ortho_82_-34.png"/>
 
 Create a land mask by selecting TOPO raster values >= 0 using *gdal_calc.py*.  
-```gdal_calc.py --overwrite --type=Byte -A topo.tif -B hyp.tif --allBands B --outfile=hyp_land.tif --calc="B*(A>=0)"```
+```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif -B hyp.tif --allBands B --outfile=hyp_land.tif --calc="B*(A>=0)"```
 
 <img src="images/hyp_land.png"/>
 
 Rasterize vector features and burn value directly into bands of a raster.
 ```bash
-cp hyp.tif hyp_burn.tif
-gdal_rasterize -at -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_110m_coastline /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_burn.tif
-gdal_rasterize -at -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_10m_rivers_lake_centerlines /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_burn.tif
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m' hyp_burn.tif hyp_burn_vandg.tif
+gdal_rasterize -at -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_10m_rivers_lake_centerlines /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
 ```
+
+name='Rome'
+xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
+
 
 <img src="images/hyp_burn_vandg.png"/>
 
@@ -204,6 +199,13 @@ Use *gdal_translate* to convert from GeoTIFF to JPEG, PNG and other image format
 ```gdal_translate -outsize 1920 0 -if 'GTiff' -of 'JPEG' hyp.tif hyp.png```
 
 ```gdal_translate -outsize 1920 0 -if 'GTiff' -of 'PNG' hyp.tif hyp.png```
+
+Resize and convert all geotiffs in the folder to png. This is how to make the example thumbnails.  
+```bash
+ls *.tif | while read file; do
+  gdal_translate -of 'PNG' -outsize 1920 0 ${file} ${file%.*}.png
+done
+```
 
 ## 2. Vector
 
