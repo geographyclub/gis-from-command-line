@@ -161,11 +161,10 @@ gdalwarp -dstalpha -crop_to_cutline -cutline 'natural_earth_vector.gpkg' -csql "
 Create a raster mask by selecting SRTM15 DEM values >= 0 using *gdal_calc.py*.  
 ```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif --outfile=topo_land.tif --calc="1*(A>=0)"```
 
-Select values from a second raster where DEM values >= 0. 
-```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif -B hyp.tif --allBands B --outfile=hyp_land.tif --calc="B*(A>=0)"```
-
-Reproject the masked land raster.
+Select values from a second raster where DEM values >= 0, then reproject.  
 ```
+gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif -B hyp.tif --allBands B --outfile=hyp_land.tif --calc="B*(A>=0)"
+
 name='HIMALAYAS'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_regions_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
 gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' hyp_land.tif hyp_ortho_"${xy[0]}"_"${xy[1]}".tif
