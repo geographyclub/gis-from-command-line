@@ -202,6 +202,8 @@ Select some vector layers processed from the Natural Earth geopackage. These wil
 Use *update* to add layers to our geopackage.  
 ```ogr2ogr -overwrite -update vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_coastline_split1.gpkg coastline```
 
+<img src="images/coastline.svg"/>
+
 ### 2.2 Reprojecting
 
 Transform from lat-long to an orthographic projection, this time using *ogr2ogr* for vectors.  
@@ -246,7 +248,7 @@ ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT
 echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > ${file%.*}.svg
 done
 ogrinfo -dialect sqlite -sql "SELECT AsSVG(geom, 1) FROM ${layer}" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
-  echo '<path d="'${array[0]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#000" stroke-width="0.4px" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
+  echo '<path d="'${array[0]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#000" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
 done
 echo '</svg>' >> ${file%.*}.svg
 ```
