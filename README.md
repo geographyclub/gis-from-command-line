@@ -151,45 +151,12 @@ gdalwarp -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pack
 
 <img src="images/hyp_ortho_82_-34.png"/>
 
-Create a land mask by selecting TOPO raster values >= 0 using *gdal_calc.py*.  
-```gdal_calc.py --overwrite --type=Byte -A topo.tif -B hyp.tif --outfile=hyp_land.tif --calc="B*(A>=0)+0*(A<0)" --calc="B*(A>=0)+0*(A<0)" --calc="B*(A>=0)+255*(A<0)"```
-
-<img src="images/hyp_land.png"/>
-
-Classify TOPO raster values using *gdal_calc.py*.  
-```gdal_calc.py --overwrite --type=Byte -A topo.tif --outfile=topo_class.tif --calc="(A>=0)*(A<500)*1+(A>=500)*(A<1000)*2+(A>=1000)*(A<1500)*3+(A>=1500)*(A<2000)*4+(A>=2000)*(A<2500)*5+(A>=2500)*(A<3000)*6+(A>=3000)*(A<3500)*7+(A>=3500)*8"```
-
-Create a color file and color the raster.  
-```bash
-cat > srtm.cpt <<- EOM
-8    255 255 255 255
-7    250 250 250 255
-6    220 220 220 255
-5    185 154 100 255
-4    214 187  98 255
-3     202 158  75 255
-2     230 230 128 255
-1     117 194  93 255
-NA 255 255 255 0
-EOM
-gdaldem color-relief -alpha topo_class.tif srtm.cpt topo_color.tif
-```
-
-<img src="images/topo_color.png"/>
-
-Rasterize vector features and burn value directly onto TOPO.  
-```bash
-cp topo.tif topo_hydro.tif
-gdal_rasterize -at -burn 0 -l ne_10m_rivers_lake_centerlines /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg topo_hydro.tif
-gdal_rasterize -at -burn 0 -l ne_10m_lakes /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg topo_hydro.tif
-```
-
 Make a shaded relief map from TOPO by setting zfactor, azimuth and altitude.  
 ```bash
 zfactor=100
 azimuth=315
 altitude=45
-gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo_hydro.tif topo_hillshade.tif
+gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade.tif
 ```
 
 <img src="images/topo_hillshade.png"/>
@@ -205,6 +172,49 @@ gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 
 ```
 
 <img src="images/hyp_hillshade_ortho_85_29.png"/>
+
+A small world.  
+```
+# create small topo
+gdal_translate -outsize 192 0 topo.tif topo_192.tif
+
+# classify
+gdal_calc.py --overwrite --type=Byte -A topo_192.tif --outfile=topo_192_class.tif --calc="(A<0)*0+(A>=0)*(A<500)*1+(A>=500)*(A<1000)*2+(A>=1000)*(A<1500)*3+(A>=1500)*(A<2000)*4+(A>=2000)*(A<2500)*5+(A>=2500)*(A<3000)*6+(A>=3000)*(A<3500)*7+(A>=3500)*8"
+
+# color
+cat > srtm.cpt <<- EOM
+8    255 255 255 255
+7    250 250 250 255
+6    220 220 220 255
+5    185 154 100 255
+4    214 187  98 255
+3     202 158  75 255
+2     230 230 128 255
+1     117 194  93 255
+0	166   206 227 
+NA 255 255 255 0
+EOM
+gdaldem color-relief topo_192_class.tif srtm.cpt topo_192_color.tif
+
+# shaded relief map
+zfactor=1000
+azimuth=315
+altitude=45
+gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo_192.tif topo_192_hillshade.tif
+
+# multiply
+gdal_calc.py --overwrite -A topo_192_hillshade.tif -B topo_192_color.tif --allBands B --outfile=topo_192_color_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"
+
+# project
+file='topo_192_color_hillshade.tif'
+name='HIMALAYAS'
+xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_regions_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
+```
+
+<img src="images/topo_192_color_hillshade.png"/>
+<img src="images/topo_192_color_hillshade_ortho_85_29.png"/>
+
 
 ### 1.4 Converting
 
