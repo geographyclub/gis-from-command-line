@@ -152,17 +152,11 @@ gdalwarp -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pack
 <img src="images/hyp_ortho_82_-34.png"/>
 
 Create a land mask by selecting TOPO raster values >= 0 using *gdal_calc.py*.  
-```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif -B hyp.tif --allBands B --outfile=hyp_land.tif --calc="B*(A>=0)"```
-
-Rasterize vector features and burn value directly into bands of the land raster.  
-```bash
-gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_110m_coastline /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
-gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_10m_rivers_lake_centerlines /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
-```
+```gdal_calc.py --overwrite --type=Byte -A topo.tif -B hyp.tif --outfile=hyp_land.tif --calc="B*(A>=0)+0*(A<0)" --calc="B*(A>=0)+0*(A<0)" --calc="B*(A>=0)+255*(A<0)"```
 
 <img src="images/hyp_land.png"/>
 
-Rasterize vector features with attribute selected from the WWF BasinATLAS dataset.  
+Rasterize vector features with attribute values.  
 ```gdal_rasterize -at -ts 1920 960 -te -180 -90 180 90 -a ORDER_ -l BasinATLAS_v10_lev08 -a_nodata NA /home/steve/maps/wwf/hydroatlas/BasinATLAS_v10.gdb basin8.tif```
 
 Create a color file and color the raster.  
@@ -186,12 +180,19 @@ gdaldem color-relief -alpha basin8.tif haxby.cpt basin8_color.tif
 
 <img src="images/basin8_color.png"/>
 
+Rasterize vector features and burn value directly into bands of the land raster.  
+```bash
+cp topo.tif topo_hydro.tif
+gdal_rasterize -at -burn 0 -l ne_10m_rivers_lake_centerlines /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg topo_hydro.tif
+gdal_rasterize -at -burn 0 -l ne_10m_lakes /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg topo_hydro.tif
+```
+
 Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
 ```bash
 zfactor=100
 azimuth=315
 altitude=45
-gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade.tif
+gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo_hydro.tif topo_hillshade.tif
 ```
 
 <img src="images/topo_hillshade.png"/>
