@@ -156,38 +156,35 @@ Create a land mask by selecting TOPO raster values >= 0 using *gdal_calc.py*.
 
 <img src="images/hyp_land.png"/>
 
-Rasterize vector features with attribute values.  
-```gdal_rasterize -at -ts 1920 960 -te -180 -90 180 90 -a ORDER_ -l BasinATLAS_v10_lev08 -a_nodata NA /home/steve/maps/wwf/hydroatlas/BasinATLAS_v10.gdb basin8.tif```
+Classify TOPO raster values using *gdal_calc.py*.  
+```gdal_calc.py --overwrite --type=Byte -A topo.tif --outfile=topo_class.tif --calc="(A>=0)*(A<500)*1+(A>=500)*(A<1000)*2+(A>=1000)*(A<1500)*3+(A>=1500)*(A<2000)*4+(A>=2000)*(A<2500)*5+(A>=2500)*(A<3000)*6+(A>=3000)*(A<3500)*7+(A>=3500)*8"```
 
 Create a color file and color the raster.  
 ```bash
-cat > haxby.cpt <<- EOM
-100%     255 255 255 255
-90%      255 186 133 255
-80%      255 161  68 255
-70%      255 189  87 255
-60%      240 236 121 255
-50%      205 255 162 255
-40%      138 236 174 255
-30%      106 235 255 255
-20%       50 190 255 255
-10%       40 127 251 255
-0%        37  57 175 255
+cat > srtm.cpt <<- EOM
+8    255 255 255 255
+7    250 250 250 255
+6    220 220 220 255
+5    185 154 100 255
+4    214 187  98 255
+3     202 158  75 255
+2     230 230 128 255
+1     117 194  93 255
 NA 255 255 255 0
 EOM
-gdaldem color-relief -alpha basin8.tif haxby.cpt basin8_color.tif
+gdaldem color-relief -alpha topo_class.tif srtm.cpt topo_color.tif
 ```
 
-<img src="images/basin8_color.png"/>
+<img src="images/topo_color.png"/>
 
-Rasterize vector features and burn value directly into bands of the land raster.  
+Rasterize vector features and burn value directly onto TOPO.  
 ```bash
 cp topo.tif topo_hydro.tif
 gdal_rasterize -at -burn 0 -l ne_10m_rivers_lake_centerlines /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg topo_hydro.tif
 gdal_rasterize -at -burn 0 -l ne_10m_lakes /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg topo_hydro.tif
 ```
 
-Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
+Make a shaded relief map from TOPO by setting zfactor, azimuth and altitude.  
 ```bash
 zfactor=100
 azimuth=315
