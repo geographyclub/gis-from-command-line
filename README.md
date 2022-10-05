@@ -158,55 +158,6 @@ gdalwarp -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pack
 
 <img src="images/hyp_ortho_82_-34.png"/>
 
-<details><summary>Create color tables to use on the TOPO raster.</summary>  
-```bash
-cat > greyoclock.cpt <<- EOM
-0% 118 147 142 255
-25% 152 177 179
-75% 192 203 206
-100% 217 217 217 255
-NA 255 255 255 0
-EOM
-
-cat > oslo.cpt <<- EOM
-0% 38 87 140
-25% 107 142 200
-75% 168 180 202
-100% 241 241 242
-NA 255 255 255 0
-EOM
-
-cat > rainbow.cpt <<- EOM
-100% 255 0 0 255
-80% 255 0 255 255
-60% 0 0 255 255
-40% 0 255 255 255
-20% 0 255 0 255
-0% 255 255 0 255
-NA 255 255 255 0
-EOM
-
-cat > srtm.cpt <<- EOM
-8850    255 255 255 255
-5000    250 250 250 255
-3000    220 220 220 255
-2000    185 154 100 255
-1000    214 187  98 255
-500     202 158  75 255
-200     230 230 128 255
-100     117 194  93 255
-0.1      57 151 105 255
-0       100 128 255 255
--50       0   0 205 255
--100      0   0 130 255
--200      0   0  70 255
--300      0   0  20 255
--500      0   0  10 255
--11000    0   0   0 255
-EOM
-```  
-</details>
-
 Choose a color table for the TOPO raster and select values < 0 to make an ocean mask using *gdal_calc.py*.  
 ```bash
 color='oslo'
