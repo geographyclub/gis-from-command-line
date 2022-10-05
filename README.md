@@ -174,7 +174,7 @@ gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 
 <img src="images/hyp_hillshade_ortho_85_29.png"/>
 
 A small world.  
-```
+```bash
 # create small topo
 gdal_translate -outsize 192 0 topo.tif topo_192.tif
 
