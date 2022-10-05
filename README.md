@@ -148,7 +148,7 @@ gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha -t
 
 <img src="images/hyp_extent_-172_7_-12_84.png"/>
 
-Clip to vector geometry with *crop_to_cutline*. Here the cutline is the extent of the Indian Ocean.  
+Clip to vector geometry with *crop_to_cutline*. The cutline is the extent of the Indian Ocean here so we center the projection on its centroid.  
 ```
 file='hyp.tif'
 name='INDIAN OCEAN'
@@ -164,13 +164,10 @@ Create a raster mask by selecting SRTM15 DEM values >= 0 using *gdal_calc.py*.
 Select values from a second raster where DEM values >= 0, then reproject.  
 ```
 gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif -B hyp.tif --allBands B --outfile=hyp_land.tif --calc="B*(A>=0)"
-
-name='HIMALAYAS'
-xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_regions_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' hyp_land.tif hyp_ortho_"${xy[0]}"_"${xy[1]}".tif
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m' hyp_land.tif hyp_vandg.tif
 ```
 
-<img src="images/hyp_ortho_85_29.png"/>
+<img src="images/hyp_vandg.png"/>
 
 Rasterize vector feature and burn in value directly into bands of the Natural Earth raster.
 ```
