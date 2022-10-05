@@ -156,8 +156,8 @@ Create a land mask by selecting TOPO raster values >= 0 using *gdal_calc.py*.
 
 Rasterize vector features and burn value directly into bands of the land raster. Take a closer look by reprojecting.  
 ```bash
-gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_110m_coastline /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
-gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_10m_rivers_lake_centerlines /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
+gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_10m_geography_regions_polys /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
+gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_10m_geography_marine_polys /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
 ```
 
 <img src="images/hyp_land.png"/>
