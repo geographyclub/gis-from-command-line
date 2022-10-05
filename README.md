@@ -158,19 +158,20 @@ gdalwarp -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pack
 
 <img src="images/hyp_ortho_82_-34.png"/>
 
-Choose a color table for the TOPO raster and select values < 0 to make an ocean mask using *gdal_calc.py*.  
-```bash
-color='oslo'
-gdaldem color-relief topo.tif ${color}.cpt topo_${color}.tif
-gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif -B topo_${color}.tif --allBands B --outfile=topo_ocean.tif --calc="B*(A<0)"
-```
-
-<img src="images/topo_ocean.png"/>
-
-Rasterize vector feature and burn in value directly into bands of our land raster.
-```gdal_rasterize --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 960 -at -b 1 -b 2 -b 3 -burn 166 -burn 206 -burn 227 -l ne_10m_ocean /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_vandg.tif```
+Create a land mask by selecting TOPO raster values >= 0 using *gdal_calc.py*.  
+```gdal_calc.py --overwrite --type=Byte -A topo.tif -B hyp.tif --allBands B --outfile=hyp_land.tif --calc="B*(A>=0)"```
 
 <img src="images/hyp_land.png"/>
+
+Rasterize vector features and burn value directly into bands of a raster.
+```bash
+cp hyp.tif hyp_burn.tif
+gdal_rasterize -at -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_110m_coastline /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_burn.tif
+gdal_rasterize -at -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 0 -l ne_10m_rivers_lake_centerlines /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_burn.tif
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m' hyp_burn.tif hyp_burn_vandg.tif
+```
+
+<img src="images/hyp_burn_vandg.png"/>
 
 Rasterize vector feature with *order_* attribute selected from the WWF BasinATLAS dataset.  
 ```gdal_rasterize -at -ts 1920 960 -te -180 -90 180 90 -a ORDER_ -l BasinATLAS_v10_lev08 -a_nodata NA /home/steve/maps/wwf/hydroatlas/BasinATLAS_v10.gdb basin8.tif```
