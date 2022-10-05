@@ -189,10 +189,17 @@ gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitu
 
 <img src="images/topo_hillshade.png"/>
 
-Multiply Natural Earth and shaded relief rasters.  
-```gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"```
+Multiply Natural Earth and shaded relief rasters, then take a closer look at the Himalayas.  
+```bash
+gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"
 
-<img src="images/hyp_hillshade.png"/>
+file='hyp_hillshade.tif'
+name='HIMALAYAS'
+xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_regions_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
+```
+
+<img src="images/hyp_hillshade_ortho_85_29.png"/>
 
 ### 1.4 Converting
 
