@@ -167,14 +167,21 @@ Rasterize vector features with attribute selected from the WWF BasinATLAS datase
 
 Create a color file and color the raster.  
 ```bash
-cat > greyoclock.cpt <<- EOM
-0% 118 147 142 255
-25% 152 177 179
-75% 192 203 206
-100% 217 217 217 255
+cat > haxby.cpt <<- EOM
+100%     255 255 255 255
+90%      255 186 133 255
+80%      255 161  68 255
+70%      255 189  87 255
+60%      240 236 121 255
+50%      205 255 162 255
+40%      138 236 174 255
+30%      106 235 255 255
+20%       50 190 255 255
+10%       40 127 251 255
+0%        37  57 175 255
 NA 255 255 255 0
 EOM
-gdaldem color-relief -alpha basin8.tif greyoclock.cpt basin8_color.tif
+gdaldem color-relief -alpha basin8.tif haxby.cpt basin8_color.tif
 ```
 
 <img src="images/basin8_color.png"/>
