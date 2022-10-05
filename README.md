@@ -154,10 +154,10 @@ gdalwarp -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pack
 Create a land mask by selecting TOPO raster values >= 0 using *gdal_calc.py*.  
 ```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif -B hyp.tif --allBands B --outfile=hyp_land.tif --calc="B*(A>=0)"```
 
-Rasterize vector features and burn value directly into bands of the land raster. Take a closer look by reprojecting.  
+Rasterize vector features and burn value directly into bands of the land raster.  
 ```bash
-gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_10m_geography_regions_polys /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
-gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_10m_geography_marine_polys /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
+gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_110m_coastline /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
+gdal_rasterize -at -b 1 -b 2 -b 3 -burn 1 -burn 1 -burn 1 -l ne_10m_rivers_lake_centerlines /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
 ```
 
 <img src="images/hyp_land.png"/>
