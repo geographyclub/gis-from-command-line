@@ -1,6 +1,6 @@
 <PAMDataset>
   <SRS dataAxisToSRSAxisMapping="1,2">PROJCS["unknown",GEOGCS["unknown",DATUM["Unknown based on Normal Sphere (r=6370997) ellipsoid",SPHEROID["Normal Sphere (r=6370997)",6370997,0]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Orthographic"],PARAMETER["latitude_of_origin",-34],PARAMETER["central_meridian",82],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]</SRS>
-  <GeoTransform> -5.6414135255422685e+06,  1.2469995625139933e+04,  0.0000000000000000e+00,  4.4505963493768610e+06,  0.0000000000000000e+00, -1.2478777312199893e+04</GeoTransform>
+  <GeoTransform> -5.6414135255422685e+06,  6.2349978125699663e+03,  0.0000000000000000e+00,  4.4505963493768610e+06,  0.0000000000000000e+00, -6.2346631933401595e+03</GeoTransform>
   <Metadata domain="IMAGE_STRUCTURE">
     <MDI key="INTERLEAVE">PIXEL</MDI>
   </Metadata>

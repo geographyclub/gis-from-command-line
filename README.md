@@ -29,7 +29,7 @@ GDAL (Geospatial Data Abstraction Library) is a computer software library for re
 ### 1.1 Resampling
 
 Resize the Natural Earth hypsometric raster to a web-safe width while keeping the aspect ratio. This will be our example raster.  
-```
+```bash
 file='HYP_HR_SR_OB_DR.tif'
 width=1920
 gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} hyp.tif
@@ -38,9 +38,9 @@ gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} hyp.tif
 <img src="images/hyp.png"/>
 
 Resize and convert all geotiffs in the folder to png. These will be our example thumbnails.  
-```
+```bash
 ls *.tif | while read file; do
-  gdal_translate -of 'PNG' -outsize 50% 50% ${file} ${file%.*}.png
+  gdal_translate -of 'PNG' -outsize 1920 0 ${file} ${file%.*}.png
 done
 ```
 
@@ -53,7 +53,7 @@ Set prime meridian on 0-360° raster.
 ```gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over" hyp.tif hyp_180pm.tif```
 
 Set prime meridian on -180-180° raster by desired degree.  
-```
+```bash
 file='hyp.tif'
 prime=180
 gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${prime}dE" ${file} ${file%.*}_180pm.tif
@@ -62,7 +62,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${
 <img src="images/hyp_180pm.png"/>
 
 Set prime meridian by desired placename. Use *ogrinfo* to query the Natural Earth geopackage.  
-```
+```bash
 file='hyp.tif'
 name='Toronto'
 prime=$(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Shift_Longitude(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g')
@@ -72,39 +72,39 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${
 <img src="images/hyp_281pm.png"/>
 
 Transform from lat-long to the popular Web Mercator projection using EPSG code, setting extent between -85* and 80* latitude.  
-```
+```bash
 file='hyp.tif'
 proj='epsg:3857'
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs ${proj} -te -180 -85 180 80 -te_srs EPSG:4326 ${file} ${file%.*}_"${proj//:/_}".tif
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs ${proj} -te -180 -85 180 80 -te_srs EPSG:4326 ${file} ${file%.*}_"${proj//:/_}".tif
 ```
 
 <img src="images/hyp_epsg_3857.png"/>
 
 Transform from lat-long to the Times projection using PROJ definition.  
-```
+```bash
 file='hyp.tif'
 proj='+proj=times'
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
 ```
 
 <img src="images/hyp_times.png"/>
 
 Transform from lat-long to an orthographic projection with a custom PROJ definition. Again use *ogrinfo* to query the Natural Earth geopackage.  
-```
+```bash
 file='hyp.tif'
 name='Seoul'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
 <img src="images/hyp_ortho_127_38.png"/>
 
 Center the orthographic projection on the centroid of a country using the same method.  
-```
+```bash
 file='hyp.tif'
 name='Ukraine'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
 <img src="images/hyp_ortho_31_49.png"/>
@@ -130,58 +130,44 @@ Georeference and transform in one step.
 ### 1.3 Geoprocessing
 
 Clip raster to a bounding box using either *gdal_translate* or *gdalwarp*. Use the appropriate stereographic projection for each hemisphere.  
-```gdal_translate -projwin -180 90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ hyp_north_stere.tif```
+```gdal_translate -projwin -180 90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ hyp_north_stere.tif```
 
 <img src="images/hyp_north_stere.png"/>
 
-```gdalwarp -te -180 -90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' /vsistdin/ hyp_south_stere.tif```
+```gdalwarp -te -180 -90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' /vsistdin/ hyp_south_stere.tif```
 
 <img src="images/hyp_south_stere.png"/>
 
 Clip raster to extent of vector geometries in the same way. Use North America Lambert Conformal Conic projection here.  
-```
+```bash
 file='hyp.tif'
 continent='North America'
 extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -s_srs 'EPSG:4326' -t_srs 'ESRI:102010' /vsistdin/ ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
+gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs 'ESRI:102010' /vsistdin/ ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
 ```
 
 <img src="images/hyp_extent_-172_7_-12_84.png"/>
 
-Clip to vector geometry with *crop_to_cutline*. The cutline is the extent of the Indian Ocean here so we center the projection on its centroid.  
-```
+Clip to vector geometry with *crop_to_cutline*. The cutline is the extent of the Indian Ocean so we center the projection on its centroid here.  
+```bash
 file='hyp.tif'
 name='INDIAN OCEAN'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT Extent(geom) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' /vsistdin/ ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
+gdalwarp -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT Extent(geom) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' /vsistdin/ ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
 <img src="images/hyp_ortho_82_-34.png"/>
 
-Create a raster mask by selecting SRTM15 DEM values >= 0 using *gdal_calc.py*.  
-```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif --outfile=topo_land.tif --calc="1*(A>=0)"```
+<details><summary>Create color tables to use on the TOPO raster.</summary>
+```bash
+cat > greyoclock.cpt <<- EOM
+0% 118 147 142 255
+25% 152 177 179
+75% 192 203 206
+100% 217 217 217 255
+NA 255 255 255 0
+EOM
 
-Select values from a second raster where DEM values >= 0, then reproject.  
-```
-gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif -B hyp.tif --allBands B --outfile=hyp_land.tif --calc="B*(A>=0)"
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m' hyp_land.tif hyp_vandg.tif
-```
-
-<img src="images/hyp_vandg.png"/>
-
-Rasterize vector feature and burn in value directly into bands of the Natural Earth raster.
-```
-cp hyp.tif hyp_land.tif
-gdal_rasterize -at -ts 1920 960 -at -b 1 -b 2 -b 3 -burn 0 -burn 0 -burn 255 -l ne_110m_ocean /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_land.tif
-```
-
-<img src="images/hyp_land.png"/>
-
-Rasterize vector feature with *order_* attribute selected from the WWF BasinATLAS dataset.  
-```gdal_rasterize -at -ts 1920 960 -te -180 -90 180 90 -a ORDER_ -l BasinATLAS_v10_lev08 -a_nodata NA /home/steve/maps/wwf/hydroatlas/BasinATLAS_v10.gdb basin8.tif```
-
-Create custom color file and color raster map.  
-```
 cat > oslo.cpt <<- EOM
 0% 38 87 140
 25% 107 142 200
@@ -189,13 +175,61 @@ cat > oslo.cpt <<- EOM
 100% 241 241 242
 NA 255 255 255 0
 EOM
-gdaldem color-relief -alpha basin8.tif oslo.cpt basin8_color.tif
+
+cat > rainbow.cpt <<- EOM
+100% 255 0 0 255
+80% 255 0 255 255
+60% 0 0 255 255
+40% 0 255 255 255
+20% 0 255 0 255
+0% 255 255 0 255
+NA 255 255 255 0
+EOM
+
+cat > srtm.cpt <<- EOM
+8850    255 255 255 255
+5000    250 250 250 255
+3000    220 220 220 255
+2000    185 154 100 255
+1000    214 187  98 255
+500     202 158  75 255
+200     230 230 128 255
+100     117 194  93 255
+0.1      57 151 105 255
+0       100 128 255 255
+-50       0   0 205 255
+-100      0   0 130 255
+-200      0   0  70 255
+-300      0   0  20 255
+-500      0   0  10 255
+-11000    0   0   0 255
+EOM
 ```
+</details>
+
+Choose a color table for the TOPO raster and select values < 0 to make an ocean mask using *gdal_calc.py*.  
+```bash
+color='oslo'
+gdaldem color-relief topo.tif ${color}.cpt topo_${color}.tif
+gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif -B topo_${color}.tif --allBands B --outfile=topo_ocean.tif --calc="B*(A<0)"
+```
+
+<img src="images/topo_ocean.png"/>
+
+Rasterize vector feature and burn in value directly into bands of our land raster.
+```gdal_rasterize --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -at -b 1 -b 2 -b 3 -burn 166 -burn 206 -burn 227 -l ne_10m_ocean /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg hyp_vandg.tif```
+
+<img src="images/hyp_land.png"/>
+
+Rasterize vector feature with *order_* attribute selected from the WWF BasinATLAS dataset.  
+```gdal_rasterize -at -ts 1920 960 -te -180 -90 180 90 -a ORDER_ -l BasinATLAS_v10_lev08 -a_nodata NA /home/steve/maps/wwf/hydroatlas/BasinATLAS_v10.gdb basin8.tif```
+
+```gdaldem color-relief -alpha basin8.tif oslo.cpt basin8_color.tif```
 
 <img src="images/basin8_color.png"/>
 
 Make a shaded relief map from DEM by setting zfactor, azimuth and altitude.  
-```
+```bash
 zfactor=100
 azimuth=315
 altitude=45
@@ -234,7 +268,7 @@ Use *update* to add layers to our geopackage.
 ### 2.2 Reprojecting
 
 Transform from lat-long to an orthographic projection, this time using *ogr2ogr* for vectors.  
-```
+```bash
 file='vectors.gpkg'
 layer='countries'
 place='Cairo'
@@ -245,7 +279,7 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 <img src="images/countries_ortho_31_30.svg"/>
 
 Center the orthographic projection on the centroid of a country.  
-```
+```bash
 file='vectors.gpkg'
 layer='countries'
 place='Brazil'
@@ -265,7 +299,7 @@ Clip feature by grid.
 ### Converting
 
 Convert vector layer to svg file using *ogrinfo* to get extent and *AsSVG* to write paths. These are the vector examples shown here.  
-```
+```bash
 file='vectors.gpkg'
 layer='countries'
 width=1920
