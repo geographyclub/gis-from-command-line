@@ -158,7 +158,7 @@ gdalwarp -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/pack
 
 <img src="images/hyp_ortho_82_-34.png"/>
 
-<details><summary>Create color tables to use on the TOPO raster.</summary>
+<details><summary>Create color tables to use on the TOPO raster.</summary>  
 ```bash
 cat > greyoclock.cpt <<- EOM
 0% 118 147 142 255
@@ -204,7 +204,7 @@ cat > srtm.cpt <<- EOM
 -500      0   0  10 255
 -11000    0   0   0 255
 EOM
-```
+```  
 </details>
 
 Choose a color table for the TOPO raster and select values < 0 to make an ocean mask using *gdal_calc.py*.  
