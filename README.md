@@ -18,7 +18,7 @@ This is how I use a few open source Linux tools and a little BASH scripting to m
 
 3. [ImageMagick for mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
 
-4. [Scripting it all together: weather data](https://github.com/geographyclub/weather-to-video)
+4. [From download to video: weather data](https://github.com/geographyclub/weather-to-video)
 
 5. [PostGIS + Leaflet: census data](https://github.com/geographyclub/american-geography#readme)
 
@@ -61,7 +61,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${
 
 <img src="images/hyp_180pm.png"/>
 
-Set prime meridian by desired placename. Use *ogrinfo* to query a Natural Earth geopackage.  
+Set prime meridian by desired placename. Use *ogrinfo* to query the Natural Earth geopackage.  
 ```
 file='hyp.tif'
 name='Toronto'
@@ -89,7 +89,7 @@ gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_s
 
 <img src="images/hyp_times.png"/>
 
-Transform from lat-long to an orthographic projection with a custom PROJ definition. Again use *ogrinfo* to query a Natural Earth geopackage.  
+Transform from lat-long to an orthographic projection with a custom PROJ definition. Again use *ogrinfo* to query the Natural Earth geopackage.  
 ```
 file='hyp.tif'
 name='Seoul'
@@ -125,49 +125,53 @@ Georeference by ground control points.
 ```gdal_translate -gcp 0 0 -180 -90 -gcp 1024 512 180 90 -gcp 0 512 -180 90 -gcp 1024 0 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
 
 Georeference and transform in one step.  
-```gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -t_srs 'EPSG:4326' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif```
+```gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif```
 
 ### 1.3 Geoprocessing
 
 Clip raster to a bounding box using either *gdal_translate* or *gdalwarp*. Use the appropriate stereographic projection for each hemisphere.  
-```gdal_translate -projwin -180 90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ hyp_north_stere.tif```
+```gdal_translate -projwin -180 90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ hyp_north_stere.tif```
 
 <img src="images/hyp_north_stere.png"/>
 
-```gdalwarp -te -180 -90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' /vsistdin/ hyp_south_stere.tif```
+```gdalwarp -te -180 -90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' /vsistdin/ hyp_south_stere.tif```
 
 <img src="images/hyp_south_stere.png"/>
 
-Clip raster to extent of vector geometries. Use North America Lambert Conformal Conic projection here.  
+Clip raster to extent of vector geometries in the same way. Use North America Lambert Conformal Conic projection here.  
 ```
 file='hyp.tif'
 continent='North America'
 extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -t_srs 'ESRI:102010' /vsistdin/ ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
+gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha -ts 1920 0 -s_srs 'EPSG:4326' -t_srs 'ESRI:102010' /vsistdin/ ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
 ```
 
 <img src="images/hyp_extent_-172_7_-12_84.png"/>
 
-Clip to vector geometry directly with *gdalwarp* with *crop_to_cutline* option. Here the cutline is the extent of the Indian Ocean.  
+Clip to vector geometry with *crop_to_cutline*. Here the cutline is the extent of the Indian Ocean.  
 ```
 file='hyp.tif'
 name='INDIAN OCEAN'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -dstalpha -crop_to_cutline -cutline '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT Extent(geom) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' /vsistdin/ ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
+gdalwarp -dstalpha -crop_to_cutline -cutline 'natural_earth_vector.gpkg' -csql "SELECT Extent(geom) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' /vsistdin/ ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
 <img src="images/hyp_ortho_82_-34.png"/>
 
-Create a raster mask by keeping values greater than 0 using *gdal_calc*.  
-```gdal_calc.py --overwrite --type=byte --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="A*(A>0)"```
+Create a raster mask by selecting SRTM15 DEM values >= 0 using *gdal_calc.py*.  
+```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif --outfile=topo_land.tif --calc="1*(A>=0)"```
 
-Create a raster mask by setting values greater than 0 to 1.  
-```gdal_calc.py --overwrite --NoDataValue=0 -A topo.tif --outfile=topo_mask.tif --calc="1*(A>0)"```
+Select values from a second raster where DEM values >= 0. 
+```gdal_calc.py --overwrite --type=Byte --NoDataValue=0 -A topo.tif -B hyp.tif --allBands B --outfile=hyp_land.tif --calc="B*(A>=0)"```
 
-Clip Natural Earth raster to the land mask.  
-```gdal_calc.py --overwrite --type=byte --NoDataValue=0 -A topo_mask.tif -B hyp.tif --allBands B --outfile="hyp_mask.tif" --calc="B*(A>0)"```
+Reproject the masked land raster.
+```
+name='HIMALAYAS'
+xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_regions_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' hyp_land.tif hyp_ortho_"${xy[0]}"_"${xy[1]}".tif
+```
 
-<img src="images/hyp_mask.png"/>
+<img src="images/hyp_ortho_85_29.png"/>
 
 Rasterize vector feature and burn in value directly into bands of the Natural Earth raster.
 ```
