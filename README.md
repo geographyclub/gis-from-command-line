@@ -239,6 +239,8 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 <img src="images/land_europe.svg"/>
 
 
+
+
 ### Converting
 
 Convert vector layer to svg file using *ogrinfo* to get data and fill in svg according to data type. These are the vector examples shown here.  
