@@ -194,25 +194,18 @@ done
 
 ### 2.1 Selecting
 
-Select some vector layers processed from the Natural Earth geopackage. These will be our example layers.  
-```ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
+Select vector layers processed from the Natural Earth geopackage. These will be our example layers.  
+```ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' countries.gpkg /home/steve/maps/naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
 
 <img src="images/countries.svg"/>
 
-Use *update* to add layers to our geopackage.  
-```bash
-ogr2ogr -overwrite -update -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg -nln coastline /home/steve/maps/naturalearth/packages/ne_110m_coastline_split1.gpkg coastline
-ogr2ogr -overwrite -update -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg -nln grid1 ~/maps/grids/grid1.gpkg grid1
-ogr2ogr -overwrite -update -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg -nln grid10 ~/maps/grids/grid10.gpkg grid10
-ogr2ogr -overwrite -update -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg -nln graticules5 /home/steve/maps/naturalearth/ne_10m_graticules/ne_10m_graticules_5_exploded.gpkg ne_10m_graticules_5
-ogr2ogr -overwrite -update -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg -nln subunits /home/steve/maps/naturalearth/packages/ne_50m_subunits_split1.gpkg ne_50m_subunits_split1
-```
+```ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -nln subunits subunits.gpkg /home/steve/maps/naturalearth/packages/ne_50m_subunits_split1.gpkg ne_50m_subunits_split1```
 
 ### 2.2 Reprojecting
 
 Transform from lat-long to an orthographic projection, this time using *ogr2ogr* for vectors.  
 ```bash
-file='vectors.gpkg'
+file='countries.gpkg'
 layer='countries'
 name='Cairo'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
@@ -223,7 +216,7 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 
 Center the orthographic projection on the centroid of a country.  
 ```bash
-file='vectors.gpkg'
+file='countries.gpkg'
 layer='countries'
 name='Brazil'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
@@ -234,17 +227,23 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 
 ### Geoprocessing
 
-Clip features by extent. The projection is centered on the tropics between -23* and 23* latitude here.  
-```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -180 -23 180 23 countries_tropics.gpkg vectors.gpkg countries```
+Clip features to the extent of .  
+```bash
+file='countries.gpkg'
+layer='countries'
+continent='Europe'
+extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_50m_admin_0_map_subunits WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc  ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} ${layer}_${continent,,}.gpkg ${file} ${layer}
+```
 
-<img src="images/countries_tropics.svg"/>
+<img src="images/countries_europe.svg"/>
 
 
 ### Converting
 
 Convert vector layer to svg file using *ogrinfo* to get data and fill in svg according to data type. These are the vector examples shown here.  
 ```bash
-file='countries_ortho_31_30.gpkg'
+file='countries_europe.gpkg'
 layer='countries'
 width=1920
 height=960
