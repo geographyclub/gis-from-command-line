@@ -227,7 +227,7 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 
 ### Geoprocessing
 
-Clip features to the extent of Europe and center it on projection.  
+Clip features to the extent of Europe.  
 ```bash
 file='land.gpkg'
 layer='land'
