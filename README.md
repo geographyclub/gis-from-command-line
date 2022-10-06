@@ -202,8 +202,6 @@ Select some vector layers processed from the Natural Earth geopackage. These wil
 Use *update* to add layers to our geopackage.  
 ```ogr2ogr -overwrite -update vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_coastline_split1.gpkg coastline```
 
-<img src="images/coastline.svg"/>
-
 ### 2.2 Reprojecting
 
 Transform from lat-long to an orthographic projection, this time using *ogr2ogr* for vectors.  
@@ -230,9 +228,9 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 
 ### Geoprocessing
 
-Clip feature by extent.  
+Clip feature by extent. Manually select the tropics between -23* and 23* latitude and set the center of the projection.  
 ```
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -180 -23 180 23 -t_srs '+proj=ortho +lat_0='20' +lon_0='-20' +ellps='sphere'' countries_ortho_"${xy[0]}"_"${xy[1]}".gpkg vectors.gpkg countries
 
 ```
 
