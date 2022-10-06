@@ -195,12 +195,18 @@ done
 ### 2.1 Selecting
 
 Select some vector layers processed from the Natural Earth geopackage. These will be our example layers.  
-```ogr2ogr -overwrite vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
+```ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
 
 <img src="images/countries.svg"/>
 
 Use *update* to add layers to our geopackage.  
-```ogr2ogr -overwrite -update vectors.gpkg /home/steve/maps/naturalearth/packages/ne_110m_coastline_split1.gpkg coastline```
+```bash
+ogr2ogr -overwrite -update -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg -nln coastline /home/steve/maps/naturalearth/packages/ne_110m_coastline_split1.gpkg coastline
+ogr2ogr -overwrite -update -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg -nln grid1 ~/maps/grids/grid1.gpkg grid1
+ogr2ogr -overwrite -update -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg -nln grid10 ~/maps/grids/grid10.gpkg grid10
+ogr2ogr -overwrite -update -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg -nln graticules5 /home/steve/maps/naturalearth/ne_10m_graticules/ne_10m_graticules_5_exploded.gpkg ne_10m_graticules_5
+ogr2ogr -overwrite -update -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' vectors.gpkg -nln subunits /home/steve/maps/naturalearth/packages/ne_50m_subunits_split1.gpkg ne_50m_subunits_split1
+```
 
 ### 2.2 Reprojecting
 
@@ -210,7 +216,7 @@ file='vectors.gpkg'
 layer='countries'
 name='Cairo'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
 ```
 
 <img src="images/countries_ortho_31_30.svg"/>
@@ -221,33 +227,42 @@ file='vectors.gpkg'
 layer='countries'
 name='Brazil'
 xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
 ```
 
 <img src="images/countries_ortho_-53_-11.svg"/>
 
 ### Geoprocessing
 
-Clip feature by extent. Select the extent of the tropics between -23* and 23* latitude.  
-```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -90 -23 90 23 -t_srs '+proj=lcc +lon_0=0 +lat_1=-25 +lat_2=50' countries_tropics_lcc.gpkg vectors.gpkg countries```
+Clip features by extent. The projection is centered on the tropics between -23* and 23* latitude here.  
+```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -180 -23 180 23 countries_tropics.gpkg vectors.gpkg countries```
 
-<img src="images/countries_tropics_lcc.svg"/>
+<img src="images/countries_tropics.svg"/>
 
 
 ### Converting
 
-Convert vector layer to svg file using *ogrinfo* to get extent and *AsSVG* to write paths. These are the vector examples shown here.  
+Convert vector layer to svg file using *ogrinfo* to get data and fill in svg according to data type. These are the vector examples shown here.  
 ```bash
-file='vectors.gpkg'
+file='countries_tropics.gpkg'
 layer='countries'
 width=1920
 height=960
-
 ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_MaxY(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxX(extent(geom)) - ST_MinX(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxY(extent(geom)) - ST_MinY(extent(geom))) FROM ${layer}" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
 echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > ${file%.*}.svg
 done
-ogrinfo -dialect sqlite -sql "SELECT AsSVG(geom, 1) FROM ${layer}" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
-  echo '<path d="'${array[0]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#000" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
+ogrinfo -dialect sqlite -sql "SELECT fid || CAST(X'09' AS TEXT) || ST_X(ST_Centroid(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_Y(ST_Centroid(geom))) || CAST(X'09' AS TEXT) || AsSVG(geom, 1) || CAST(X'09' AS TEXT) || GeometryType(geom) FROM ${layer} WHERE geom NOT LIKE '%null%'" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
+  case ${array[4]} in
+    POINT|MULTIPOINT)
+      echo '<circle id="'${array[0]}'" cx="'${array[1]}'" cy="'${array[2]}'" r="1em" vector-effect="non-scaling-stroke" fill="#FFF" fill-opacity="1" stroke="#000" stroke-width="0.1em" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
+      ;;
+    LINESTRING|MULTILINESTRING)
+      echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" stroke="#000" stroke-width="0.1em" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
+      ;;
+    POLYGON|MULTIPOLYGON)
+      echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#000" stroke-width="0.1em" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
+      ;;
+  esac
 done
 echo '</svg>' >> ${file%.*}.svg
 ```
