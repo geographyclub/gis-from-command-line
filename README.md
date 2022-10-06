@@ -227,13 +227,13 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 
 ### Geoprocessing
 
-Clip features to the extent of .  
+Clip features to extent and center projection on Europe.  
 ```bash
 file='countries.gpkg'
 layer='countries'
 continent='Europe'
-extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_50m_admin_0_map_subunits WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc  ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} ${layer}_${continent,,}.gpkg ${file} ${layer}
+extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)), round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM (SELECT ST_Union(geom) geom FROM ne_50m_admin_0_map_subunits WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc  ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' ${layer}_${continent,,}.gpkg ${file} ${layer}
 ```
 
 <img src="images/countries_europe.svg"/>
