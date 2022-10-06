@@ -229,7 +229,7 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 ### Geoprocessing
 
 Clip feature by extent. Select the extent of the tropics between -23* and 23* latitude.  
-```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -180 -23 180 23 -t_srs '+proj=lcc +lon_0=0 +lat_1=-25 +lat_2=50' countries_tropics_lcc.gpkg vectors.gpkg countries```
+```ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -spat -90 -23 90 23 -t_srs '+proj=lcc +lon_0=0 +lat_1=-25 +lat_2=50' countries_tropics_lcc.gpkg vectors.gpkg countries```
 
 <img src="images/countries_tropics_lcc.svg"/>
 
