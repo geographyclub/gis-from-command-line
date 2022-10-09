@@ -199,7 +199,7 @@ Select vector layers processed from the Natural Earth geopackage. These will be 
 
 <img src="images/countries.svg"/>
 
-```ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -nln land land.gpkg /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg ne_10m_land```
+```ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -nln subunits subunits.gpkg /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg ne_10m_admin_0_map_subunits```
 
 ### 2.2 Reprojecting
 
@@ -227,26 +227,30 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 
 ### Geoprocessing
 
-Clip features to the extent of Europe.  
+Clip extent and reproject.  
 ```bash
-file='land.gpkg'
-layer='land'
-continent='Europe'
-extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)), round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM (SELECT ST_Union(geom) geom FROM ne_50m_admin_0_map_subunits WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc  ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[5]}'" +lon_0="'${xy[4]}'" +ellps='sphere'' ${layer}_${continent,,}.gpkg ${file} ${layer}
+file='subunits.gpkg'
+layer='subunits'
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc -160 -90 160 90 -s_srs "EPSG:4326" -t_srs '+proj=laea +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m' ${layer}_laea.gpkg ${file} ${layer}
 ```
 
-<img src="images/land_europe.svg"/>
+<img src="images/subunits_laea.svg"/>
 
-
-
+Select countries in Europe.  
+```bash
+file='subunits.gpkg'
+layer='subunits'
+continent='Europe'
+extent=($(ogrinfo subunits.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)), round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM (SELECT ST_Union(geom) geom FROM subunits WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc  ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[5]}'" +lon_0="'${xy[4]}'" +ellps='sphere'' ${layer}_${continent,,}.gpkg ${file} ${layer}
+```
 
 ### Converting
 
 Convert vector layer to svg file using *ogrinfo* to get data and fill in svg according to data type. These are the vector examples shown here.  
 ```bash
-file='land_europe.gpkg'
-layer='land'
+file='subunits_laea.gpkg'
+layer='subunits'
 width=1920
 height=960
 ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_MaxY(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxX(extent(geom)) - ST_MinX(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxY(extent(geom)) - ST_MinY(extent(geom))) FROM ${layer}" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
@@ -261,7 +265,7 @@ ogrinfo -dialect sqlite -sql "SELECT fid || CAST(X'09' AS TEXT) || ST_X(ST_Centr
       echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" stroke="#000" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
       ;;
     POLYGON|MULTIPOLYGON)
-      echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#000" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
+      echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#FFF" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> ${file%.*}.svg
       ;;
   esac
 done
