@@ -199,8 +199,6 @@ Select vector layers processed from the Natural Earth geopackage. These will be 
 
 <img src="images/countries.svg"/>
 
-```ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -nln subunits subunits.gpkg /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg ne_10m_admin_0_map_subunits```
-
 ### 2.2 Reprojecting
 
 Transform from lat-long to an orthographic projection, this time using *ogr2ogr* for vectors.  
@@ -225,24 +223,19 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 
 <img src="images/countries_ortho_-53_-11.svg"/>
 
-### Geoprocessing
+### 2.3 Geoprocessing
 
-Clip extent and reproject.  
+Clip and reproject vector and raster data to the same extent.  
 ```bash
-file='subunits.gpkg'
-layer='subunits'
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc -160 -90 160 90 -s_srs "EPSG:4326" -t_srs '+proj=laea +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m' ${layer}_laea.gpkg ${file} ${layer}
-```
-
-<img src="images/subunits_laea.svg"/>
-
-Select countries in Europe.  
-```bash
-file='subunits.gpkg'
-layer='subunits'
-continent='Europe'
-extent=($(ogrinfo subunits.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)), round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM (SELECT ST_Union(geom) geom FROM subunits WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc  ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[5]}'" +lon_0="'${xy[4]}'" +ellps='sphere'' ${layer}_${continent,,}.gpkg ${file} ${layer}
+# make extent
+name='North America'
+extent=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)), round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${name}')" | grep '=' | sed -e 's/^.*= //g'))
+# clip hyp
+gdalwarp -te_srs 'EPSG:4326' -te ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} /home/steve/maps/naturalearth/raster/HYP_HR_SR_OB_DR_5400_2700.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' /vsistdin/ hyp_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.tif
+# clip topo
+gdalwarp -te_srs 'EPSG:4326' -te ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} /home/steve/maps/srtm/topo15_4000.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' /vsistdin/ topo_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.tif
+# clip vectors
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} -a_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' subunits_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.gpkg /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg ne_10m_admin_0_map_subunits
 ```
 
 ### Converting
