@@ -6,23 +6,25 @@ This is how I use a few open source Linux tools and a little BASH scripting to m
 
 ## TABLE OF CONTENTS
 
-1. [Raster](#1-raster)  
+1. [GDAL](#1-GDAL)  
     1.1 [Resampling](#11-resampling)  
     1.2 [Reprojecting](#12-reprojecting)  
     1.3 [Geoprocessing](#13-geoprocessing)  
     1.4 [Converting](#14-converting)  
 
-2. [Vector](#2-vector)  
+2. [OGR](#2-OGR)  
     2.1 [Selecting](#21-selecting)  
     2.2 [Reprojecting](#22-reprojecting)  
 
-3. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
+3. [SAGA-GIS](#3-SAGA-GIS)  
 
-4. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)
+4. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
 
-5. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)
+5. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)
 
-## 1. Raster
+6. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)
+
+## 1. GDAL
 
 GDAL (Geospatial Data Abstraction Library) is a computer software library for reading and writing raster and vector geospatial data formats.
 
@@ -190,7 +192,7 @@ ls *.tif | while read file; do
 done
 ```
 
-## 2. Vector
+## 2. OGR
 
 ### 2.1 Selecting
 
@@ -264,3 +266,64 @@ ogrinfo -dialect sqlite -sql "SELECT fid || CAST(X'09' AS TEXT) || ST_X(ST_Centr
 done
 echo '</svg>' >> ${file%.*}.svg
 ```
+
+## 3. SAGA-GIS
+
+Misc
+
+`saga_cmd --cores 1`
+
+Classify
+
+`saga_cmd imagery_classification 1 -NCLUSTER 20 -MAXITER 0 -METHOD 1 -GRIDS N43W080_wgs84_500_5000.tif -CLUSTER N43W080_wgs84_500_5000_cluster.tif`
+
+Watershed
+
+`saga_cmd imagery_segmentation 0 -OUTPUT 0 -DOWN 1 -JOIN 0 -THRESHOLD 0 -EDGE 1 -BBORDERS 0 -GRID N43W080_wgs84_500.tif -SEGMENTS N43W080_wgs84_500_segments.tif`
+
+`saga_cmd ta_channels 5 -THRESHOLD 1 -DEM N43W080_wgs84_500.tif -SEGMENTS N43W080_wgs84_500_segments.shp -BASINS N43W080_wgs84_500_basins.shp`
+
+Raster to polygons
+
+`saga_cmd shapes_grid 6 -GRID N43W080_wgs84.tif -POLYGONS N43W080_wgs84.shp`
+
+Raster values to vector
+
+`saga_cmd shapes_grid 0`
+
+`saga_cmd shapes_grid 1`
+
+Arrows
+
+`saga_cmd shapes_grid 15 -SURFACE N43W080_wgs84_500.tif -VECTORS N43W080_wgs84_500_gradient.shp`
+
+Vector processing
+
+`saga_cmd shapes_lines`
+
+`saga_cmd shapes_points`
+
+`saga_cmd shapes_polygons`
+
+Smoothing
+
+`saga_cmd shapes_lines 7 -SENSITIVITY 3 -ITERATIONS 10 -PRESERVATION 10 -SIGMA 2 -LINES_IN N43W080_wgs84_500_segments.shp -LINES_OUT N43W080_wgs84_500_segments_smooth.shp`
+
+Landcsape
+
+`saga_cmd ta_compound 0 -THRESHOLD 1 -ELEVATION N43W080_wgs84_500.tif -SHADE N43W080_wgs84_500_shade.tif -CHANNELS N43W080_wgs84_500_channels.shp -BASINS N43W080_wgs84_500_basins.shp`
+
+Terrain
+
+`saga_cmd ta_morphometry 16 -DEM N43W080_wgs84_500.tif -TRI N43W080_wgs84_500_tri.shp`
+
+`saga_cmd ta_morphometry 17 -DEM N43W080_wgs84_500.tif -VRM N43W080_wgs84_500_vrm.tif`
+
+`saga_cmd ta_morphometry 18 -DEM N43W080_wgs84_500.tif -TPI N43W080_wgs84_500_tpi.tif`
+
+TIN
+
+`saga_cmd tin_tools 0 -GRID N48W092_N47W092_N48W091_N47W091_smooth.tif -TIN N48W092_N47W092_N48W091_N47W091_tin.shp`
+
+`saga_cmd tin_tools 3 -TIN N48W092_N47W092_N48W091_N47W091_tin.shp -POLYGONS N48W092_N47W092_N48W091_N47W091_poly.shp`
+
