@@ -18,11 +18,13 @@ This is how I use a few open source Linux tools and a little BASH scripting to m
 
 3. [SAGA-GIS](#3-SAGA-GIS)  
 
-4. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
+4. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook#readme) 
 
-5. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)
+5. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
 
-6. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)
+6. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)
+
+7. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)
 
 ## 1. GDAL
 
