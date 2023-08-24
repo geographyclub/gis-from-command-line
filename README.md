@@ -20,11 +20,13 @@ This is how I use Linux to make my own *Geographic Information Systems* from com
 
 4. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook#readme) 
 
-5. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
+5. [Earth Basher](https://github.com/geographyclub/earth-basher#readme) 
 
-6. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)
+6. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
 
-7. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)
+7. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)
+
+8. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)
 
 ## 1. GDAL
 
