@@ -7,19 +7,13 @@ This is how I use Linux to make my own *Geographic Information Systems* from com
 
 ## TABLE OF CONTENTS
 
-1. [GDAL](#1-GDAL)  
-    1.1 [Resampling](#11-resampling)  
-    1.2 [Reprojecting](#12-reprojecting)  
-    1.3 [Geoprocessing](#13-geoprocessing)  
-    1.4 [Converting](#14-converting)  
+1. [GDAL](#GDAL)  
 
-2. [OGR](#2-OGR)  
-    2.1 [Selecting](#21-selecting)  
-    2.2 [Reprojecting](#22-reprojecting)  
+2. [OGR](#OGR)  
 
-3. [EARTH BASHER: BASH scripts for Natural Earth](#3-earth-basher)  
+3. [earth-basher: scripts for Natural Earth data](#earth-basher)  
 
-4. [SAGA-GIS](#4-saga-gis)  
+4. [SAGA-GIS](#saga-gis)  
 
 5. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook#readme) 
 
@@ -29,13 +23,9 @@ This is how I use Linux to make my own *Geographic Information Systems* from com
 
 8. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)
 
-## 1. GDAL
+## GDAL
 
-GDAL (Geospatial Data Abstraction Library) is a computer software library for reading and writing raster and vector geospatial data formats.
-
-### 1.1 Resampling
-
-Resize the Natural Earth hypsometric raster to a web-safe width while keeping the aspect ratio. This will be our example raster.  
+Resize the Natural Earth hypsometric raster to a web-safe width while keeping the aspect ratio.  
 ```bash
 file='HYP_HR_SR_OB_DR.tif'
 width=1920
@@ -44,8 +34,6 @@ gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} hyp.tif
 
 Resize raster as a fraction of its original size using output from *gdalinfo*.  
 ```gdalwarp -overwrite -ts $(echo $(gdalinfo hyp.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline hyp.tif hyp_192.tif```
-
-### 1.2 Reprojecting
 
 Set prime meridian on 0-360° raster.  
 ```gdalwarp -overwrite -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over" hyp.tif hyp_180pm.tif```
@@ -113,8 +101,6 @@ Georeference by ground control points.
 Georeference and transform in one step.  
 ```gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif```
 
-### 1.3 Geoprocessing
-
 Clip raster to a bounding box using either *gdal_translate* or *gdalwarp*. Use the appropriate stereographic projection for each hemisphere.  
 ```gdal_translate -projwin -180 90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ hyp_north_stere.tif```
 
@@ -154,8 +140,6 @@ xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -
 gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
-### 1.4 Converting
-
 Use *gdalwarp* to convert from GeoTIFF to regular TIFF (use with programs like imagemagick).  
 ```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -ts 1920 0 -f 'GTiff' -of 'GTiff' hyp.tif hyp_nogeo.tif```
 
@@ -164,21 +148,17 @@ Use *gdal_translate* to convert from GeoTIFF to JPEG, PNG and other image format
 
 ```gdal_translate -outsize 1920 0 -if 'GTiff' -of 'PNG' hyp.tif hyp.png```
 
-Resize and convert all geotiffs in the folder to png. This is how to make the example thumbnails.  
+Resize and convert all geotiffs in the folder to png.
 ```bash
 ls *.tif | while read file; do
   gdal_translate -of 'PNG' -outsize 1920 0 ${file} ${file%.*}.png
 done
 ```
 
-## 2. OGR
-
-### 2.1 Selecting
+## OGR
 
 Select vector layers processed from the Natural Earth geopackage.
 ```ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' countries.gpkg /home/steve/maps/naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
-
-### 2.2 Reprojecting
 
 Transform from lat-long to an orthographic projection, this time using *ogr2ogr* for vectors.  
 ```bash
@@ -198,8 +178,6 @@ xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -
 ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
 ```
 
-### 2.3 Geoprocessing
-
 Clip and reproject vector and raster data to the same extent.  
 ```bash
 # make extent
@@ -213,9 +191,7 @@ gdalwarp -te_srs 'EPSG:4326' -te ${extent[0]} ${extent[1]} ${extent[2]} ${extent
 ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} -a_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' subunits_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.gpkg /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg ne_10m_admin_0_map_subunits
 ```
 
-### Converting
-
-Convert vector layer to svg file using *ogrinfo* to get data and fill in svg according to data type. These are the vector examples shown here.  
+Convert vector layer to svg file using *ogrinfo* to get data and fill in svg according to data type.  
 ```bash
 file='subunits_laea.gpkg'
 layer='subunits'
@@ -240,10 +216,9 @@ done
 echo '</svg>' >> ${file%.*}.svg
 ```
 
-## 3. EARTH BASHER
+## earth-basher
 
-OGR/BASH scripts to work with Natural Earth vectors (download the data here: https://naciscdn.org/naturalearth/packages/natural_earth_vector.gpkg.zip)
-
+OGR/BASH scripts to work with Natural Earth vectors (download the data here: https://naciscdn.org/naturalearth/packages/natural_earth_vector.gpkg.zip)  
 ```bash
 #==============# 
 # earth-to-svg #
@@ -344,7 +319,7 @@ gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -tr 0.04 0.04 -r cubicspline -cro
 ogr2ogr -append -update -makevalid -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -clipsrc '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -clipsrclayer ${layer} -clipsrcwhere "name = '${name}'" -nlt MULTIPOLYGON -nln contour_clip top15_${name// /_}_${interval}m.gpkg top15_${name// /_}_${interval}m.gpkg contour
 ```
 
-## 4. SAGA-GIS
+## SAGA-GIS
 
 Misc
 
