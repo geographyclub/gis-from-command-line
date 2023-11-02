@@ -2,7 +2,7 @@
 
 This is how I use Linux to make my own *Geographic Information Systems* from command line.
 
-<img src="img/hyp_ortho_127_38.png"/>
+<img src="img/hyp_ortho_31_49_small.png"/>
 
 ## TABLE OF CONTENTS
 
