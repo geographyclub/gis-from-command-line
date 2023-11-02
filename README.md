@@ -2,8 +2,7 @@
 
 This is how I use Linux to make my own *Geographic Information Systems* from command line.
 
-<img src="img/ne_110m_admin_0_countries.svg"/>
-<sub>*ne_110m_admin_0_countries.svg made with earth-to-svg</sub>
+<img src="img/hyp_ortho_127_38.png"/>
 
 ## TABLE OF CONTENTS
 
