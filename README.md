@@ -17,9 +17,9 @@ This is how I use Linux to make my own *Geographic Information Systems* from com
     2.1 [Selecting](#21-selecting)  
     2.2 [Reprojecting](#22-reprojecting)  
 
-3. [earth-basher: Natural Earth x BASH](#3-earth-basher)  
+3. [EARTH BASHER: BASH scripts for Natural Earth](#3-earth-basher)  
 
-4. [SAGA-GIS](#4-SAGA-GIS)  
+4. [SAGA-GIS](#4-saga-gis)  
 
 5. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook#readme) 
 
@@ -240,7 +240,7 @@ done
 echo '</svg>' >> ${file%.*}.svg
 ```
 
-## 3. earth-basher
+## 3. EARTH BASHER
 
 OGR/BASH scripts to work with Natural Earth vectors (download the data here: https://naciscdn.org/naturalearth/packages/natural_earth_vector.gpkg.zip)
 
