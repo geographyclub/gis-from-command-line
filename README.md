@@ -203,6 +203,9 @@ ogrinfo -sql "SELECT tbl_name FROM sqlite_master WHERE name like 'ne_10m%'" natu
 
 # list tables prettily
 ogrinfo -so natural_earth_vector.gpkg | grep '^[0-9]' | grep 'ne_110m' | sed -e 's/^.*: //g' -e 's/ .*$//g'
+
+# list tables with certain geom type
+ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like 'ne_50m%'" natural_earth_vector.gpkg | grep '=' | sed -e 's/^.*= //g' | while read table; do geomtype=$(ogrinfo -sql "SELECT GeometryType(geom) FROM ${table};" natural_earth_vector.gpkg | grep '=' | sed 's/^.*= //g'); if [[ ${geomtype} =~ 'POLYGON' ]]; then echo ${table}; fi; done
 ```
 
 Operations with *ogrinfo*
@@ -450,6 +453,20 @@ ogrinfo -dialect sqlite -sql "SELECT fid || CAST(X'09' AS TEXT) || ST_X(ST_Centr
   esac
 done
 echo '</svg>' >> svg/${layer}.svg
+
+# convert all 50m layers from Natural Earth.  
+ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like 'ne_50m%'" natural_earth_vector.gpkg | grep '=' | sed -e 's/^.*= //g' | while read layer; do
+  geomtype=$(ogrinfo -sql "SELECT GeometryType(geom) FROM ${layer};" natural_earth_vector.gpkg | grep '=' | sed 's/^.*= //g')
+  if [[ ${geomtype} =~ 'POLYGON' ]]; then
+    ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_MaxY(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxX(extent(geom)) - ST_MinX(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxY(extent(geom)) - ST_MinY(extent(geom))) FROM '"${layer}"'" natural_earth_vector.gpkg | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
+      echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > svg/${layer}.svg
+      ogrinfo -dialect sqlite -sql "SELECT fid || CAST(X'09' AS TEXT) || ST_X(ST_Centroid(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_Y(ST_Centroid(geom))) || CAST(X'09' AS TEXT) || AsSVG(geom, 1) || CAST(X'09' AS TEXT) || GeometryType(geom) || CAST(X'09' AS TEXT) || REPLACE(name,'&','and') FROM ${layer} WHERE geom NOT LIKE '%null%'" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
+
+      echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#FFF" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"><title>'${array[5]}'</title></path>' >> svg/${layer}.svg
+    done
+    echo '</svg>' >> svg/${layer}.svg
+  fi
+done
 ```
 
 ```bash
