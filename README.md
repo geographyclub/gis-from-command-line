@@ -1,6 +1,6 @@
 # GIS FROM COMMAND LINE
 
-This is how I use Linux to make my own *Geographic Information Systems* from command line.
+Everything you need to make Linux a complete *Geographic Information System* from command line -- by example.
 
 <img src="img/hyp_ortho_31_49_small.png"/>
 
