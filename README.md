@@ -10,9 +10,9 @@ This is how I use Linux to make my own *Geographic Information Systems* from com
 
 2. [OGR](#OGR)  
 
-3. [earth-basher: scripts for Natural Earth data](#earth-basher)  
+3. [SAGA-GIS](#saga-gis)  
 
-4. [SAGA-GIS](#saga-gis)  
+4. [earth-basher: scripts for Natural Earth data](#earth-basher)  
 
 5. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook#readme) 
 
@@ -147,16 +147,98 @@ Use *gdal_translate* to convert from GeoTIFF to JPEG, PNG and other image format
 
 ```gdal_translate -outsize 1920 0 -if 'GTiff' -of 'PNG' hyp.tif hyp.png```
 
-Resize and convert all geotiffs in the folder to png.
+Resize and convert all geotiffs in the folder to png.  
 ```bash
 ls *.tif | while read file; do
   gdal_translate -of 'PNG' -outsize 1920 0 ${file} ${file%.*}.png
 done
 ```
 
+Raster math with *gdal_calc*.  
+```bash
+# empty
+gdal_calc.py --overwrite -A /home/steve/Projects/maps/dem/toronto/N43W080_3857.tif --outfile="/home/steve/Downloads.tif" --calc="0"
+
+# adding
+gdal_calc.py --overwrite -A ${dem%_wgs84.tif}_3857.tif -B /home/steve/Projects/maps/osm/${city}/${city}_buildings.tif --outfile="/home/steve/Projects/maps/osm/${city}/${city}_dembuildings.tif" --calc="((A>=0)*A)+((A<0)*A*-0.1)+(B*20)"
+gdal_calc.py --overwrite -A /home/steve/Projects/maps/dem/toronto/N43W080_3857.tif -B /home/steve/Projects/maps/dem/toronto/buildings.tif --outfile="/home/steve/Projects/maps/dem/toronto/N43W080_3857_buildings.tif" --calc="A+(B*20)"
+
+# slicing
+gdal_calc.py --overwrite --NoDataValue=0 -A topo15_43200_slope.tif --outfile topo15_43200_slope1.tif --calc="A*(A>=1)"
+gdal_calc.py -A input.tif --outfile=result.tif --calc="A*logical_and(A>100,A<150)"
+# slicing with a loop
+for a in $(seq 1 100 5000); do
+  gdal_calc.py --NoDataValue=0 -A ${dem} --outfile ${dir}/$(basename ${dem%.*}_${a}.tif) --calc="0*(A<0)" --calc="${a}*(A>=${a})"
+done
+
+# rounding
+gdal_calc.py --overwrite -A /home/steve/maps/srtm/srtm15/raster/topo15_43200.tif --outfile /home/steve/maps/srtm/srtm15/raster/topo15_43200_rounded1000.tif --type 'Int16' --calc="A*0.001"
+
+# mask
+gdal_calc.py -A /home/steve/maps/worldclim/wc2.0_bio_30s_15.tif --outfile=/home/steve/maps/worldclim/wc2.0_bio_30s_15_mask.tif --overwrite --type=Int16 --NoDataValue=0 --calc="1*(A>0)"
+gdal_calc.py -A /home/steve/maps/srtm/topo15_43200_tmp.tif -B /home/steve/maps/worldclim/wc2.0_bio_30s_15_mask.tif --outfile=/home/steve/maps/srtm/topo15_43200_slope.tif --overwrite --type=Float32 --NoDataValue=0 --co=TILED=YES --co=COMPRESS=LZW --calc="A*(B>0)"
+
+# binary
+gdal_calc.py -A topo15_004_0004_lev01_hillshade.tif --outfile=topo15_004_0004_hillshade_binary.tif --overwrite --type=Int16 --calc="1*(A<2)"
+
+# binary (null)
+gdal_calc.py -A topo15_004_0004_lev01_hillshade.tif --outfile=topo15_004_0004_hillshade_mask.tif --overwrite --type=Int16 --NoDataValue=0 --calc="1*(A<2)"
+
+# misc
+gdal_calc.py --overwrite -A /home/steve/Projects/maps/dem/topo15_down.tif --outfile /home/steve/Downloads/tmp/dem.tif --NoDataValue=0 --calc="0*(A<0)" --calc="(A/A)*(A>=0)"
+gdal_calc.py --overwrite -A /home/steve/Downloads/tmp/temp.nc -B /home/steve/Downloads/tmp/dem.tif --outfile /home/steve/Downloads/tmp/temp_calc.tif --calc="trunc(A/${denominator})*(B==1)"
+```
+
 ## OGR
 
-Select vector layers processed from the Natural Earth geopackage.
+Print info from ogr package with *ogrinfo*.  
+```bash
+
+# list tables using *sqlite_master* or *sqlite_schema*
+ogrinfo -dialect sqlite -sql 'SELECT tbl_name FROM sqlite_master' natural_earth_vector.gpkg
+ogrinfo -dialect sqlite -sql 'SELECT tbl_name FROM sqlite_schema' natural_earth_vector.gpkg
+
+# list tables with wildcard
+ogrinfo -sql "SELECT tbl_name FROM sqlite_master WHERE name like 'ne_10m%'" natural_earth_vector.gpkg
+
+# list tables prettily
+ogrinfo -so natural_earth_vector.gpkg | grep '^[0-9]' | grep 'ne_110m' | sed -e 's/^.*: //g' -e 's/ .*$//g'
+```
+
+Operations with *ogrinfo*
+```bash
+# some basics
+ogrinfo db.sqlite -sql "VACUUM"
+ogrinfo db.sqlite -sql "SELECT CreateSpatialIndex('the_table','GEOMETRY')"
+ogrinfo poly_spatialite.sqlite -sql "drop table poly"
+ogrinfo -dialect indirect_sqlite -sql "update line set geometry=ST_Simplify(geometry,1)" highway_EPSG4326_tertiary_simple.gpkg
+
+# select from table
+ogrinfo -sql 'SELECT AsSVG(geom,1) FROM ne_110m_admin_0_countries_lakes' natural_earth_vector.gpkg
+
+# perform spatial operation and output into bash array
+xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_admin_0_map_subunits WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g')) natural_earth_vector.gpkg
+
+# use in a loop
+ogrinfo -so natural_earth_vector.gpkg | grep '^[0-9]' | grep 'ne_110m' | sed -e 's/^.*: //g' -e 's/ .*$//g' | while read layer; do count=$(ogrinfo -so  natural_earth_vector.gpkg ${layer} | grep 'Feature Count' | sed 's/^.* //g'); for (( a=1; a<=${count}; a=a+1 )); do gdal_rasterize -at -ts 180 90 -te -180 -90 180 90 -burn $[ ( $RANDOM % 255 ) + 1 ] -where "fid='${a}'" -l ${layer} natural_earth_vector.gpkg rasterize/${layer}_${a}.tif; done; done
+
+# select extent
+ogrinfo -so natural_earth_vector.gpkg ne_110m_land | grep '^Extent' | sed 's/Extent://g' | sed 's/[()]//g' | sed 's/ - /,/g' | sed 's/ //g'
+
+# select extent with buffer
+ogrinfo -so -sql "SELECT Extent(ST_Buffer(geom,${buffer})) FROM ${layer} WHERE name = '${name}'" natural_earth_vector.gpkg | grep 'Extent' | sed -e 's/Extent: //g' -e 's/(\|)//g' -e 's/ - /, /g' -e 's/, / /g'
+
+# add xy columns
+ogrinfo -update -sql 'ALTER TABLE lines ADD COLUMN x double; UPDATE lines SET x = ST_X(ST_Centroid(geom))' Bangkok.osm_gcp.gpkg
+ogrinfo -update -sql 'ALTER TABLE lines ADD COLUMN y double; UPDATE lines SET y = ST_Y(ST_Centroid(geom))' Bangkok.osm_gcp.gpkg
+```
+
+Export with *ogrinfo*
+```bash
+ogrinfo --config SPATIALITE_SECURITY=relaxed -dialect Spatialite -sql "SELECT ExportGeoJSON2('ne_110m_admin_0_countries', 'geom', 'ne_110m_admin_o_countries.geojson')" natural_earth_vector.gpkg
+```
+
+Select vector layers processed from the Natural Earth geopackage.  
 ```ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' countries.gpkg /home/steve/maps/naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
 
 Transform from lat-long to an orthographic projection, this time using *ogr2ogr* for vectors.  
@@ -190,7 +272,10 @@ gdalwarp -te_srs 'EPSG:4326' -te ${extent[0]} ${extent[1]} ${extent[2]} ${extent
 ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} -a_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' subunits_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.gpkg /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg ne_10m_admin_0_map_subunits
 ```
 
-Convert vector layer to svg file using *ogrinfo* to get data and fill in svg according to data type.  
+Convert layer to raster.  
+`gdal_rasterize PG:"dbname=osm" -l planet_osm_polygon -a levels -where "levels IS NOT NULL" -at /home/steve/Projects/maps/osm/${city}/${city}_buildings.tif`
+
+Convert layer to svg.  
 ```bash
 file='subunits_laea.gpkg'
 layer='subunits'
@@ -215,107 +300,61 @@ done
 echo '</svg>' >> ${file%.*}.svg
 ```
 
-## earth-basher
-
-OGR/BASH scripts to work with Natural Earth vectors (download the data here: https://naciscdn.org/naturalearth/packages/natural_earth_vector.gpkg.zip)  
+Convert features to svg.  
 ```bash
-#==============# 
-# earth-to-svg #
-#==============#
-
-### select layer to convert ###
-layer=ne_110m_admin_0_countries
-width=1920
-height=960
-
-### get extent and start file ###
-ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_MaxY(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxX(extent(geom)) - ST_MinX(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxY(extent(geom)) - ST_MinY(extent(geom))) FROM '"${layer}"'" natural_earth_vector.gpkg | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
-echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > svg/${layer}.svg
-done
-
-### convert features ###
-ogrinfo -dialect sqlite -sql "SELECT fid || CAST(X'09' AS TEXT) || ST_X(ST_Centroid(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_Y(ST_Centroid(geom))) || CAST(X'09' AS TEXT) || AsSVG(geom, 1) || CAST(X'09' AS TEXT) || GeometryType(geom) FROM ${layer} WHERE geom NOT LIKE '%null%'" natural_earth_vector.gpkg | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
-  case ${array[4]} in
-    POINT|MULTIPOINT)
-      echo '<circle id="'${array[0]}'" cx="'${array[1]}'" cy="'${array[2]}'" r="1em" vector-effect="non-scaling-stroke" fill="#FFF" fill-opacity="1" stroke="#000" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> svg/${layer}.svg
-      ;;
-    LINESTRING|MULTILINESTRING)
-      echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" stroke="#000" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> svg/${layer}.svg
-      ;;
-    POLYGON|MULTIPOLYGON)
-      echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#FFF" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> svg/${layer}.svg
-      ;;
-  esac
-done
-echo '</svg>' >> svg/${layer}.svg
-```
-
-```bash
-#===============# 
-# earth-to-json #
-#===============#
-
-### select layer to convert ###
-layer=ne_110m_admin_0_countries
-
-### convert ###
-ogr2ogr -f GeoJSON ${layer}.geojson natural_earth_vector.gpkg ${layer}
-```
-
-```bash
-#=================# 
-# earth-to-raster #
-#=================#
-
-# rasterize
-layer=ne_10m_roads
-res=0.1
-gdal_rasterize -at -tr ${res} ${res} -te -180 -90 180 90 -burn 1 -a_nodata NA -l ${layer} natural_earth_vector.gpkg rasterize/${layer}.tif
-```
-
-```bash
-#===============# 
-# earth-clipper #
-#===============#
-
-### select clipper ###
-name='Thailand'
-layer=ne_10m_admin_0_countries
-proj='epsg:4326'
-
-### clip layers at same scale & drop empty tables ###
-rm -rf $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg
-ogrinfo -dialect sqlite -sql "SELECT name FROM sqlite_master WHERE name LIKE '$(echo ${layer} | awk -F  "_" '{print $1"_"$2}')%'" natural_earth_vector.gpkg | grep ' = ' | sed -e 's/^.* = //g' | while read table; do
-  ogr2ogr -update -append -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -nlt promote_to_multi -s_srs 'epsg:4326' -t_srs ${proj} -clipsrc 'natural_earth_vector.gpkg' -clipsrclayer ${layer} -clipsrcwhere "name = '${name}'" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg natural_earth_vector.gpkg ${table}
-  # drop empty tables
-  case `ogrinfo -so $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg ${table} | grep 'Feature Count' | sed -e 's/^.*: //g'` in
-    0)
-      ogrinfo -dialect sqlite -sql "DROP TABLE ${table}" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg
-      ;;
-	*)
-      echo 'DONE'
-      ;;
-  esac
+table=ne_50m_admin_0_countries
+height=400
+width=400
+#mkdir ${table}
+#rm ${table}/*
+ogrinfo -so natural_earth_vector.gpkg | grep "${table}" | sed -e 's/^.*: //g' -e 's/ (.*$//g' | while read layer; do
+  ogrinfo -dialect sqlite -sql "SELECT name || CAST(X'09' AS TEXT) || ST_MinX(geom) || CAST(X'09' AS TEXT) || (-1 * ST_MaxY(geom)) || CAST(X'09' AS TEXT) || (ST_MaxX(geom) - ST_MinX(geom)) || CAST(X'09' AS TEXT) || (ST_MaxY(geom) - ST_MinY(geom)) || CAST(X'09' AS TEXT) || AsSVG(geom, 1, 3) FROM ${layer}" natural_earth_vector.gpkg | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
+    name=$(echo ${array[0]} | sed -e 's/ /_/g' -e "s/'//g" -e 's/\.//g')
+    echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[1]}' '${array[2]}' '${array[3]}' '${array[4]}'"><path d="'${array[5]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#FFF" stroke-width="0px" stroke-linejoin="round" stroke-linecap="round"/></svg>' > ${table}/${name}.svg
+  done
 done
 ```
 
+Group and convert features to svg.  
 ```bash
-#================# 
-# earth-contours #
-#================#
+osmfile='/home/steve/maps/osm/macau-latest.osm.pbf'
+ogr2ogr -update -f PostgreSQL PG:dbname=osm -nlt PROMOTE_TO_MULTI -s_srs "EPSG:4326" -t_srs "EPSG:3857" ${osmfile}
+height=600
+width=600
+psql -d world -c "COPY (SELECT a.fid, ST_XMin(a.geom) - 1000, (-1 * ST_YMax(a.geom)) - 1000, (ST_XMax(a.geom) - ST_XMin(a.geom)) + 2000, (ST_YMax(a.geom) - ST_YMin(a.geom)) + 2000, ST_AsSVG(a.geom, 1, 0) FROM multipolygons a WHERE admin_level IN ('6')) TO STDOUT DELIMITER E'\t'" | while IFS=$'\t' read -a layer1; do
+  echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${layer1[1]}' '${layer1[2]}' '${layer1[3]}' '${layer1[4]}'">' > "${layer1[0]}".svg
 
-### select clipper ###
-name='Thailand'
-layer=ne_10m_admin_0_map_subunits
-dem='/home/steve/maps/srtm/topo15.grd'
-factor=100
-interval=100
+  echo '<g id="landuse">' >> "${layer1[0]}".svg
+  psql -d world -c "COPY (SELECT clipped.fid, clipped.name, ST_AsSVG(clipped_geom, 1, 0) FROM (SELECT a.fid, b.name, (ST_Dump(ST_Intersection(a.geom, b.geom))).geom AS clipped_geom FROM multipolygons a INNER JOIN multipolygons b ON ST_Intersects(a.geom, b.geom) WHERE a.fid = ${layer1[0]} AND b.landuse IS NOT NULL) AS clipped WHERE ST_Dimension(clipped.clipped_geom) = 2) TO STDOUT DELIMITER E'\t'" | while IFS=$'\t' read -a layer2; do
+    echo '<path d="'${layer2[2]}'" fill="#e6e6e6" fill-opacity="1" stroke="none"/>' >> "${layer1[0]}".svg
+  done
+  echo '</g>' >> "${layer1[0]}".svg
 
-### clip raster with buffer & make contours ###
-gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -tr 0.04 0.04 -r cubicspline -crop_to_cutline -cutline '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT geom FROM ${layer} WHERE name = '${name}'" ${dem} /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -tr 0.004 0.004 -r cubicspline /vsistdin/ /vsistdout/ | gdal_contour -p -amin amin -amax amax -i ${interval} /vsistdin/ top15_${name// /_}_${interval}m.gpkg
+  echo '<g id="natural">' >> "${layer1[0]}".svg
+  psql -d world -c "COPY (SELECT clipped.fid, clipped.name, ST_AsSVG(clipped_geom, 1, 0) FROM (SELECT a.fid, b.name, (ST_Dump(ST_Intersection(a.geom, b.geom))).geom AS clipped_geom FROM multipolygons a INNER JOIN multipolygons b ON ST_Intersects(a.geom, b.geom) WHERE a.fid = ${layer1[0]} AND b.natural IS NOT NULL AND b.natural NOT IN ('water','wetland')) AS clipped WHERE ST_Dimension(clipped.clipped_geom) = 2) TO STDOUT DELIMITER E'\t'" | while IFS=$'\t' read -a layer2; do
+    echo '<path d="'${layer2[2]}'" fill="#b2df8a" fill-opacity="1" stroke="none"/>' >> "${layer1[0]}".svg
+  done
+  echo '</g>' >> "${layer1[0]}".svg
 
-### clip contours ###
-ogr2ogr -append -update -makevalid -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -clipsrc '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -clipsrclayer ${layer} -clipsrcwhere "name = '${name}'" -nlt MULTIPOLYGON -nln contour_clip top15_${name// /_}_${interval}m.gpkg top15_${name// /_}_${interval}m.gpkg contour
+  echo '<g id="water">' >> "${layer1[0]}".svg
+  psql -d world -c "COPY (SELECT clipped.fid, clipped.name, ST_AsSVG(clipped_geom, 1, 0) FROM (SELECT a.fid, b.name, (ST_Dump(ST_Intersection(a.geom, b.geom))).geom AS clipped_geom FROM multipolygons a INNER JOIN multipolygons b ON ST_Intersects(a.geom, b.geom) WHERE a.fid = ${layer1[0]} AND b.natural IN ('water','wetland')) AS clipped WHERE ST_Dimension(clipped.clipped_geom) = 2) TO STDOUT DELIMITER E'\t'" | while IFS=$'\t' read -a layer2; do
+    echo '<path d="'${layer2[2]}'" fill="#a6cee3" fill-opacity="1" stroke="none"/>' >> "${layer1[0]}".svg
+  done
+  echo '</g>' >> "${layer1[0]}".svg
+
+  echo '<g id="lines">' >> "${layer1[0]}".svg
+  psql -d world -c "COPY (SELECT clipped.fid, clipped.name, ST_AsSVG(ST_ChaikinSmoothing(ST_SimplifyVW(clipped_geom,1), 3), 1, 0) FROM (SELECT multipolygons.fid, lines.name, (ST_Dump(ST_Intersection(multipolygons.geom, lines.geom))).geom AS clipped_geom FROM multipolygons INNER JOIN lines ON ST_Intersects(multipolygons.geom, lines.geom) WHERE multipolygons.fid = ${layer1[0]} AND lines.highway IN ('trunk','motorway','primary','secondary','tertiary','residential')) AS clipped WHERE ST_Dimension(clipped.clipped_geom) = 1) TO STDOUT DELIMITER E'\t'" | while IFS=$'\t' read -a layer2; do
+    echo '<path d="'${layer2[2]}'" fill="none" stroke="#242424" stroke-linejoin="bevel" stroke-linecap="butt" stroke-width="2.5px" vector-effect="non-scaling-stroke"/>' >> "${layer1[0]}".svg
+    echo '<path d="'${layer2[2]}'" fill="none" stroke="#fff" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.5px" vector-effect="non-scaling-stroke"/>' >> "${layer1[0]}".svg
+  done
+  echo '</g>' >> "${layer1[0]}".svg
+
+  echo '<g id="multipolygons">' >> "${layer1[0]}".svg
+  echo '<path d="'${layer1[5]}'" fill="none" fill-opacity="1" stroke="#242424" stroke-width="1.5px" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' >> "${layer1[0]}".svg
+  echo '</g>' >> "${layer1[0]}".svg
+
+  echo '</svg>' >> "${layer1[0]}".svg
+done
 ```
 
 ## SAGA-GIS
@@ -377,4 +416,120 @@ TIN
 `saga_cmd tin_tools 0 -GRID N48W092_N47W092_N48W091_N47W091_smooth.tif -TIN N48W092_N47W092_N48W091_N47W091_tin.shp`
 
 `saga_cmd tin_tools 3 -TIN N48W092_N47W092_N48W091_N47W091_tin.shp -POLYGONS N48W092_N47W092_N48W091_N47W091_poly.shp`
+
+## earth-basher
+
+OGR/BASH scripts to work with Natural Earth vectors (download the data here: https://naciscdn.org/naturalearth/packages/natural_earth_vector.gpkg.zip)  
+```bash
+#==============# 
+# earth-to-svg #
+#==============#
+
+### select layer to convert ###
+layer=ne_110m_admin_0_countries
+width=1920
+height=960
+
+### get extent and start file ###
+ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_MaxY(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxX(extent(geom)) - ST_MinX(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxY(extent(geom)) - ST_MinY(extent(geom))) FROM '"${layer}"'" natural_earth_vector.gpkg | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
+echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > svg/${layer}.svg
+done
+
+### convert features ###
+ogrinfo -dialect sqlite -sql "SELECT fid || CAST(X'09' AS TEXT) || ST_X(ST_Centroid(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_Y(ST_Centroid(geom))) || CAST(X'09' AS TEXT) || AsSVG(geom, 1) || CAST(X'09' AS TEXT) || GeometryType(geom) FROM ${layer} WHERE geom NOT LIKE '%null%'" natural_earth_vector.gpkg | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
+  case ${array[4]} in
+    POINT|MULTIPOINT)
+      echo '<circle id="'${array[0]}'" cx="'${array[1]}'" cy="'${array[2]}'" r="1em" vector-effect="non-scaling-stroke" fill="#FFF" fill-opacity="1" stroke="#000" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> svg/${layer}.svg
+      ;;
+    LINESTRING|MULTILINESTRING)
+      echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" stroke="#000" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> svg/${layer}.svg
+      ;;
+    POLYGON|MULTIPOLYGON)
+      echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#FFF" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"/>' >> svg/${layer}.svg
+      ;;
+  esac
+done
+echo '</svg>' >> svg/${layer}.svg
+```
+
+```bash
+#===============# 
+# earth-to-json #
+#===============#
+
+### select layer to convert ###
+layer=ne_110m_admin_0_countries
+
+### convert ###
+ogr2ogr -f GeoJSON ${layer}.geojson natural_earth_vector.gpkg ${layer}
+```
+
+```bash
+#=================# 
+# earth-to-raster #
+#=================#
+
+# rasterize all
+layer=ne_10m_roads
+res=0.1
+gdal_rasterize -at -tr ${res} ${res} -te -180 -90 180 90 -burn 1 -a_nodata NA -l ${layer} natural_earth_vector.gpkg rasterize/${layer}.tif
+
+# rasterize and color features
+layer=ne_10m_roads
+rm rasterize/*
+ogrinfo -so natural_earth_vector.gpkg | grep '^[0-9]' | grep 'ne_110m' | sed -e 's/^.*: //g' -e 's/ .*$//g' | while read layer; do count=$(ogrinfo -so  natural_earth_vector.gpkg ${layer} | grep 'Feature Count' | sed 's/^.* //g'); for (( a=1; a<=${count}; a=a+1 )); do gdal_rasterize -at -ts 180 90 -te -180 -90 180 90 -burn $[ ( $RANDOM % 255 ) + 1 ] -where "fid='${a}'" -l ${layer} natural_earth_vector.gpkg rasterize/${layer}_${a}.tif; done; done
+
+gdal_create -ot Byte -if $(ls rasterize/*.tif | head -n 1) naturalearth_layers.tif
+
+ls rasterize/*.tif | while read file; do
+  convert -quiet naturalearth_layers.tif ${file} -gravity center -geometry +0+0 -compose Lighten -composite naturalearth_layers.tif
+done
+convert naturalearth_layers.tif naturalearth_layers.png
+```
+
+```bash
+#===============# 
+# earth-clipper #
+#===============#
+
+### select clipper ###
+name='Thailand'
+layer=ne_10m_admin_0_countries
+proj='epsg:4326'
+
+### clip layers at same scale & drop empty tables ###
+rm -rf $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg
+ogrinfo -dialect sqlite -sql "SELECT name FROM sqlite_master WHERE name LIKE '$(echo ${layer} | awk -F  "_" '{print $1"_"$2}')%'" natural_earth_vector.gpkg | grep ' = ' | sed -e 's/^.* = //g' | while read table; do
+  ogr2ogr -update -append -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -nlt promote_to_multi -s_srs 'epsg:4326' -t_srs ${proj} -clipsrc 'natural_earth_vector.gpkg' -clipsrclayer ${layer} -clipsrcwhere "name = '${name}'" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg natural_earth_vector.gpkg ${table}
+  # drop empty tables
+  case `ogrinfo -so $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg ${table} | grep 'Feature Count' | sed -e 's/^.*: //g'` in
+    0)
+      ogrinfo -dialect sqlite -sql "DROP TABLE ${table}" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg
+      ;;
+	*)
+      echo 'DONE'
+      ;;
+  esac
+done
+```
+
+```bash
+#================# 
+# earth-contours #
+#================#
+
+### select clipper ###
+name='Thailand'
+layer=ne_10m_admin_0_map_subunits
+dem='/home/steve/maps/srtm/topo15.grd'
+factor=100
+interval=100
+
+### clip raster with buffer & make contours ###
+gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -tr 0.04 0.04 -r cubicspline -crop_to_cutline -cutline '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT geom FROM ${layer} WHERE name = '${name}'" ${dem} /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -tr 0.004 0.004 -r cubicspline /vsistdin/ /vsistdout/ | gdal_contour -p -amin amin -amax amax -i ${interval} /vsistdin/ top15_${name// /_}_${interval}m.gpkg
+
+### clip contours ###
+ogr2ogr -append -update -makevalid -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -clipsrc '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -clipsrclayer ${layer} -clipsrcwhere "name = '${name}'" -nlt MULTIPOLYGON -nln contour_clip top15_${name// /_}_${interval}m.gpkg top15_${name// /_}_${interval}m.gpkg contour
+```
+
 
