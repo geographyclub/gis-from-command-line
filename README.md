@@ -278,7 +278,7 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 Convert layer to raster.  
 `gdal_rasterize PG:"dbname=osm" -l planet_osm_polygon -a levels -where "levels IS NOT NULL" -at /home/steve/Projects/maps/osm/${city}/${city}_buildings.tif`
 
-Convert features to svg.  
+Export features to svg.  
 ```bash
 file=natural_earth_vector.gpkg
 layer=ne_50m_populated places
