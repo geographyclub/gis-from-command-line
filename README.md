@@ -7,20 +7,14 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 ## TABLE OF CONTENTS
 
 1. [GDAL](#GDAL)  
-
 2. [OGR](#OGR)  
-
-3. [SAGA-GIS](#saga-gis)  
-
-4. [earth-basher: scripts for Natural Earth data](#earth-basher)  
-
-5. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook#readme) 
-
-6. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)
-
-7. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)
-
-8. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)
+3. [Dataset examples](#dataset-examples)  
+4. [SAGA-GIS](#saga-gis)  
+5. [earth-basher: scripts for Natural Earth data](#earth-basher)  
+6. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook#readme)  
+7. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)  
+8. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)  
+9. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)  
 
 ## GDAL
 
@@ -348,6 +342,43 @@ psql -d world -c "COPY (SELECT a.fid, ST_XMin(a.geom) - 1000, (-1 * ST_YMax(a.ge
 
   echo '</svg>' >> "${layer1[0]}".svg
 done
+```
+
+Convert all 50m polygon layers
+```bash
+ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like 'ne_50m%'" natural_earth_vector.gpkg | grep '=' | sed -e 's/^.*= //g' | while read layer; do
+  geomtype=$(ogrinfo -sql "SELECT GeometryType(geom) FROM ${layer};" natural_earth_vector.gpkg | grep '=' | sed 's/^.*= //g')
+  if [[ ${geomtype} =~ 'POLYGON' ]]; then
+    ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_MaxY(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxX(extent(geom)) - ST_MinX(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxY(extent(geom)) - ST_MinY(extent(geom))) FROM '"${layer}"'" natural_earth_vector.gpkg | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
+      echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > svg/${layer}.svg
+      ogrinfo -dialect sqlite -sql "SELECT fid || CAST(X'09' AS TEXT) || ST_X(ST_Centroid(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_Y(ST_Centroid(geom))) || CAST(X'09' AS TEXT) || AsSVG(geom, 1) || CAST(X'09' AS TEXT) || GeometryType(geom) FROM ${layer} WHERE geom NOT LIKE '%null%'" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
+        echo '<path id="'${array[0]}'" d="'${array[3]}'" vector-effect="non-scaling-stroke" fill="#000" fill-opacity="1" stroke="#FFF" stroke-width="0.6px" stroke-linejoin="round" stroke-linecap="round"><title>'${array[0]}'</title></path>' >> svg/${layer}.svg
+      done
+    echo '</svg>' >> svg/${layer}.svg
+    done
+  fi
+done
+```
+
+## Dataset Examples
+
+### ALOS
+```bash
+# alos merge directory
+dir=N005E095_N010E100
+gdal_merge.py `ls ${dir}/*_DSM.tif` -o ${dir}.tif
+
+# smooth
+gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -ts $(echo $(gdalinfo ${dir}.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline ${dir}.tif /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -ts $(echo $(gdalinfo ${dir}.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g') | bc) 0 -r cubicspline /vsistdin/ ${dir}_smooth.tif
+
+# contours
+gdal_contour -a meters -i 10 ${dir}.tif ${dir}_contours.gpkg -nln contours
+gdal_contour -p -amin amin -amax amax -i 10 ${dir}.tif ${dir}_contours_polygons.gpkg -nln contours
+
+# hillshade
+gdaldem hillshade -z 1 -az 315 -alt 45 ${dir}.tif ${dir}_hillshade.tif
+gdal_calc.py --overwrite --NoDataValue=0 -A ${dir}_hillshade.tif --calc="1*(A<=2)" --out=${dir}_hillshade_mask.tif
+gdal_polygonize.py ${dir}_hillshade_mask.tif ${dir}_hillshade_polygon.gpkg hillshade_polygon
 ```
 
 ## SAGA-GIS
