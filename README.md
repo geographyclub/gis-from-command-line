@@ -2,8 +2,6 @@
 
 All the software and scripts you need to make Linux a complete *Geographic Information System* from command line.
 
-<img src="img/hyp_ortho_31_49_small.png"/>
-
 ## TABLE OF CONTENTS
 
 1. [GDAL](#GDAL)  
