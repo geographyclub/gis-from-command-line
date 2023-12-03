@@ -6,13 +6,12 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 
 1. [GDAL](#GDAL)  
 2. [OGR](#OGR)  
-3. [Dataset examples](#dataset-examples)  
-4. [SAGA-GIS](#saga-gis)  
-5. [earth-basher: scripts for Natural Earth data](#earth-basher)  
-6. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook#readme)  
-7. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)  
-8. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)  
-9. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)  
+3. [SAGA-GIS](#saga-gis)   
+4. [Dataset examples](#dataset-examples)  
+5. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook#readme)  
+6. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)  
+7. [Weather to Video: scripts to download & animate weather data ](https://github.com/geographyclub/weather-to-video)  
+8. [American Geography: PostGIS + Leaflet with census data](https://github.com/geographyclub/american-geography#readme)  
 
 ## GDAL
 
@@ -358,27 +357,6 @@ ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like 'ne_50m%'" natural_
 done
 ```
 
-## Dataset Examples
-
-### ALOS
-```bash
-# alos merge directory
-dir=N005E095_N010E100
-gdal_merge.py `ls ${dir}/*_DSM.tif` -o ${dir}.tif
-
-# smooth
-gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -ts $(echo $(gdalinfo ${dir}.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline ${dir}.tif /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -ts $(echo $(gdalinfo ${dir}.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g') | bc) 0 -r cubicspline /vsistdin/ ${dir}_smooth.tif
-
-# contours
-gdal_contour -a meters -i 10 ${dir}.tif ${dir}_contours.gpkg -nln contours
-gdal_contour -p -amin amin -amax amax -i 10 ${dir}.tif ${dir}_contours_polygons.gpkg -nln contours
-
-# hillshade
-gdaldem hillshade -z 1 -az 315 -alt 45 ${dir}.tif ${dir}_hillshade.tif
-gdal_calc.py --overwrite --NoDataValue=0 -A ${dir}_hillshade.tif --calc="1*(A<=2)" --out=${dir}_hillshade_mask.tif
-gdal_polygonize.py ${dir}_hillshade_mask.tif ${dir}_hillshade_polygon.gpkg hillshade_polygon
-```
-
 ## SAGA-GIS
 
 Misc
@@ -439,7 +417,28 @@ TIN
 
 `saga_cmd tin_tools 3 -TIN N48W092_N47W092_N48W091_N47W091_tin.shp -POLYGONS N48W092_N47W092_N48W091_N47W091_poly.shp`
 
-## earth-basher
+## Dataset Examples
+
+### ALOS
+```bash
+# alos merge directory
+dir=N005E095_N010E100
+gdal_merge.py `ls ${dir}/*_DSM.tif` -o ${dir}.tif
+
+# smooth
+gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -ts $(echo $(gdalinfo ${dir}.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline ${dir}.tif /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -ts $(echo $(gdalinfo ${dir}.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g') | bc) 0 -r cubicspline /vsistdin/ ${dir}_smooth.tif
+
+# contours
+gdal_contour -a meters -i 10 ${dir}.tif ${dir}_contours.gpkg -nln contours
+gdal_contour -p -amin amin -amax amax -i 10 ${dir}.tif ${dir}_contours_polygons.gpkg -nln contours
+
+# hillshade
+gdaldem hillshade -z 1 -az 315 -alt 45 ${dir}.tif ${dir}_hillshade.tif
+gdal_calc.py --overwrite --NoDataValue=0 -A ${dir}_hillshade.tif --calc="1*(A<=2)" --out=${dir}_hillshade_mask.tif
+gdal_polygonize.py ${dir}_hillshade_mask.tif ${dir}_hillshade_polygon.gpkg hillshade_polygon
+```
+
+### Natural Earth
 
 OGR/BASH scripts to work with Natural Earth vectors (download the data here: https://naciscdn.org/naturalearth/packages/natural_earth_vector.gpkg.zip)  
 ```bash
@@ -594,5 +593,3 @@ gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -tr 0.04 0.04 -r cubicspline -cro
 ### clip contours ###
 ogr2ogr -append -update -makevalid -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -clipsrc '/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg' -clipsrclayer ${layer} -clipsrcwhere "name = '${name}'" -nlt MULTIPOLYGON -nln contour_clip top15_${name// /_}_${interval}m.gpkg top15_${name// /_}_${interval}m.gpkg contour
 ```
-
-
