@@ -487,12 +487,6 @@ done
 ```
 
 ```bash
-#===============# 
-# earth-to-json #
-#===============#
-
-
-```bash
 #================# 
 # earth-to-ortho #
 #================#
@@ -519,8 +513,12 @@ for x in $(seq -180 40 180); do
     done
   done
 done
-
 ```
+
+```bash
+#===============# 
+# earth-to-json #
+#===============#
 
 ### select layer to convert ###
 layer=ne_110m_admin_0_countries
