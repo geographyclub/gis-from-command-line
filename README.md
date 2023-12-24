@@ -73,6 +73,11 @@ xy=($(ogrinfo /home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg -
 gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
+ogr2ogr pipe to ogrinfo.  
+```bash
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -f GeoJSON -s_srs 'epsg:4326' -t_srs "+proj=ortho" /vsistdout/ -nln ${layer1} PG:dbname=world ${layer1} | ogrinfo -dialect sqlite -sql "SELECT X(Centroid(geometry)), Y(Centroid(geometry)) FROM ${layer1}" /vsistdin/
+```
+
 Some other popular map projections and their PROJ definitions.  
 | Name | PROJ |
 |------|------|
@@ -299,7 +304,7 @@ ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT
 done
 ```
 
-Group and convert features to svg.  
+Group and convert features to svg in postgis.  
 ```bash
 osmfile='/home/steve/maps/osm/macau-latest.osm.pbf'
 ogr2ogr -update -f PostgreSQL PG:dbname=osm -nlt PROMOTE_TO_MULTI -s_srs "EPSG:4326" -t_srs "EPSG:3857" ${osmfile}
