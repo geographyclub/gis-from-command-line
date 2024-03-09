@@ -9,7 +9,7 @@ Sections
 2. [OGR](#OGR)  
 3. [SAGA-GIS](#saga-gis)   
 4. [Dataset examples](#dataset-examples)  
-5. [Misc](#misc)  
+5. [Misc](#misc)
 Github Repos  
 1. [PostGIS Cookbook⤴](https://github.com/geographyclub/postgis-cookbook#readme)  
 2. [ImageMagick for Mapmakers⤴](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)  
