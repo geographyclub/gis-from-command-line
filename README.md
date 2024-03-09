@@ -17,27 +17,31 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 ## GDAL
 
 Resize the Natural Earth hypsometric raster to a web-safe width while keeping the aspect ratio.  
-```bash
+```shell
 file='HYP_HR_SR_OB_DR.tif'
 width=1920
 gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} hyp.tif
 ```
 
 Resize raster as a fraction of its original size using output from *gdalinfo*.  
-```gdalwarp -overwrite -ts $(echo $(gdalinfo hyp.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline hyp.tif hyp_192.tif```
+```shell
+gdalwarp -overwrite -ts $(echo $(gdalinfo hyp.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline hyp.tif hyp_192.tif
+```
 
 Set prime meridian on 0-360° raster.  
-```gdalwarp -overwrite -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over" hyp.tif hyp_180pm.tif```
+```shell
+gdalwarp -overwrite -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over" hyp.tif hyp_180pm.tif
+```
 
 Set prime meridian on -180-180° raster by desired degree.  
-```bash
+```shell
 file='hyp.tif'
 prime=180
 gdalwarp -overwrite -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${prime}dE" ${file} ${file%.*}_180pm.tif
 ```
 
 Set prime meridian by desired placename. Use *ogrinfo* to query the Natural Earth geopackage.  
-```bash
+```shell
 file='hyp.tif'
 name='Toronto'
 prime=$(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Shift_Longitude(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g')
@@ -45,21 +49,21 @@ gdalwarp -overwrite -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=W
 ```
 
 Transform from lat-long to the popular Web Mercator projection using EPSG code, setting extent between -85* and 80* latitude.  
-```bash
+```shell
 file='hyp.tif'
 proj='epsg:3857'
 gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs ${proj} -te -180 -85 180 80 -te_srs EPSG:4326 ${file} ${file%.*}_"${proj//:/_}".tif
 ```
 
 Transform from lat-long to the Times projection using PROJ definition.  
-```bash
+```shell
 file='hyp.tif'
 proj='+proj=times'
 gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
 ```
 
 Transform from lat-long to an orthographic projection with a custom PROJ definition. Again use *ogrinfo* to query the Natural Earth geopackage.  
-```bash
+```shell
 file='hyp.tif'
 name='Seoul'
 xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
@@ -67,7 +71,7 @@ gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 
 ```
 
 Center the orthographic projection on the centroid of a country using the same method.  
-```bash
+```shell
 file='hyp.tif'
 name='Ukraine'
 xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
@@ -75,7 +79,7 @@ gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 
 ```
 
 ogr2ogr pipe to ogrinfo.  
-```bash
+```shell
 ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -f GeoJSON -s_srs 'epsg:4326' -t_srs "+proj=ortho" /vsistdout/ -nln ${layer1} PG:dbname=world ${layer1} | ogrinfo -dialect sqlite -sql "SELECT X(Centroid(geometry)), Y(Centroid(geometry)) FROM ${layer1}" /vsistdin/
 ```
 
@@ -89,21 +93,29 @@ Some other popular map projections and their PROJ definitions.
 | Van der Grinten | +proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m |
 
 Georeference by extent.  
-```gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
+```shell
+gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif
+```
 
 Georeference by ground control points.  
-```gdal_translate -gcp 0 0 -180 -90 -gcp 1024 512 180 90 -gcp 0 512 -180 90 -gcp 1024 0 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif```
+```shell
+gdal_translate -gcp 0 0 -180 -90 -gcp 1024 512 180 90 -gcp 0 512 -180 90 -gcp 1024 0 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif
+```
 
 Georeference and transform in one step.  
-```gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif```
+```shell
+gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif
+```
 
 Clip raster to a bounding box using either *gdal_translate* or *gdalwarp*. Use the appropriate stereographic projection for each hemisphere.  
-```gdal_translate -projwin -180 90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ hyp_north_stere.tif```
+```shell
+gdal_translate -projwin -180 90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ hyp_north_stere.tif
 
-```gdalwarp -te -180 -90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' /vsistdin/ hyp_south_stere.tif```
+gdalwarp -te -180 -90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' /vsistdin/ hyp_south_stere.tif
+```
 
 Clip raster to extent of vector geometries in the same way. Use North America Lambert Conformal Conic projection here.  
-```bash
+```shell
 file='hyp.tif'
 continent='North America'
 extent=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
@@ -111,7 +123,7 @@ gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --
 ```
 
 Clip to vector geometry with *crop_to_cutline*. The cutline is the extent of the Indian Ocean so we center the projection on its centroid here.  
-```bash
+```shell
 file='hyp.tif'
 name='INDIAN OCEAN'
 xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
@@ -119,7 +131,7 @@ gdalwarp -dstalpha -crop_to_cutline -cutline 'naturalearth/packages/natural_eart
 ```
 
 Make a shaded relief map from TOPO by setting zfactor, azimuth and altitude.  
-```bash
+```shell
 zfactor=100
 azimuth=315
 altitude=45
@@ -127,7 +139,7 @@ gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitu
 ```
 
 Multiply Natural Earth and shaded relief rasters, then take a closer look at the Himalayas.  
-```bash
+```shell
 gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"
 
 file='hyp_hillshade.tif'
@@ -137,22 +149,26 @@ gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 
 ```
 
 Use *gdalwarp* to convert from GeoTIFF to regular TIFF (use with programs like imagemagick).  
-```gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -ts 1920 0 -f 'GTiff' -of 'GTiff' hyp.tif hyp_nogeo.tif```
+```shell
+gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -ts 1920 0 -f 'GTiff' -of 'GTiff' hyp.tif hyp_nogeo.tif
+```
 
 Use *gdal_translate* to convert from GeoTIFF to JPEG, PNG and other image formats. Use *outsize* to set width and maintain aspect ratio of output image.  
-```gdal_translate -outsize 1920 0 -if 'GTiff' -of 'JPEG' hyp.tif hyp.png```
+```shell
+gdal_translate -outsize 1920 0 -if 'GTiff' -of 'JPEG' hyp.tif hyp.png
 
-```gdal_translate -outsize 1920 0 -if 'GTiff' -of 'PNG' hyp.tif hyp.png```
+gdal_translate -outsize 1920 0 -if 'GTiff' -of 'PNG' hyp.tif hyp.png
+```
 
 Resize and convert all geotiffs in the folder to png.  
-```bash
+```shell
 ls *.tif | while read file; do
   gdal_translate -of 'PNG' -outsize 1920 0 ${file} ${file%.*}.png
 done
 ```
 
 Raster math with *gdal_calc*.  
-```bash
+```shell
 # empty raster
 gdal_calc.py --overwrite -A N43W080_3857.tif --outfile="empty.tif" --calc="0"
 
@@ -187,7 +203,7 @@ gdal_calc.py --overwrite -A temp.nc -B dem.tif --outfile temp_calc.tif --calc="t
 ```
 
 Make grid from points using VRT and gdal_grid.  
-```bash
+```shell
 cat > metar.vrt <<- EOM
 <OGRVRTDataSource>
   <OGRVRTLayer name='metar'>
@@ -208,7 +224,7 @@ gdal_grid -of netCDF -co WRITE_BOTTOMUP=NO -zfield "temp" -a invdist -txe -180 1
 ## OGR
 
 Print info from ogr package with *ogrinfo*.  
-```bash
+```shell
 
 # list tables using *sqlite_master* or *sqlite_schema*
 ogrinfo -dialect sqlite -sql 'SELECT tbl_name FROM sqlite_master' natural_earth_vector.gpkg
@@ -225,7 +241,7 @@ ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like 'ne_50m%'" natural_
 ```
 
 Operations with *ogrinfo*
-```bash
+```shell
 # some basics
 ogrinfo db.sqlite -sql "VACUUM"
 ogrinfo db.sqlite -sql "SELECT CreateSpatialIndex('the_table','GEOMETRY')"
@@ -253,15 +269,17 @@ ogrinfo -update -sql 'ALTER TABLE lines ADD COLUMN y double; UPDATE lines SET y 
 ```
 
 Export with *ogrinfo*
-```bash
+```shell
 ogrinfo --config SPATIALITE_SECURITY=relaxed -dialect Spatialite -sql "SELECT ExportGeoJSON2('ne_110m_admin_0_countries', 'geom', 'ne_110m_admin_o_countries.geojson')" natural_earth_vector.gpkg
 ```
 
 Select vector layers processed from the Natural Earth geopackage.  
-```ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' countries.gpkg naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries```
+```shell
+ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' countries.gpkg naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries
+```
 
 Transform from lat-long to an orthographic projection, this time using *ogr2ogr* for vectors.  
-```bash
+```shell
 file='countries.gpkg'
 layer='countries'
 name='Cairo'
@@ -270,7 +288,7 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 ```
 
 Transform points for projected extent reference.  
-```bash
+```shell
 rm -rf points1/*
 for x in $(seq -180 10 -160); do
   for y in $(seq -90 10 -70); do
@@ -281,7 +299,7 @@ done
 ```
 
 Center the orthographic projection on the centroid of a country.  
-```bash
+```shell
 file='countries.gpkg'
 layer='countries'
 name='Brazil'
@@ -290,7 +308,7 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 ```
 
 Clip and reproject vector and raster data to the same extent.  
-```bash
+```shell
 # make extent
 name='North America'
 extent=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)), round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${name}')" | grep '=' | sed -e 's/^.*= //g'))
@@ -303,10 +321,12 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 ```
 
 Convert layer to raster.  
-`gdal_rasterize PG:"dbname=osm" -l planet_osm_polygon -a levels -where "levels IS NOT NULL" -at /home/steve/Projects/maps/osm/${city}/${city}_buildings.tif`
+```shell
+gdal_rasterize PG:"dbname=osm" -l planet_osm_polygon -a levels -where "levels IS NOT NULL" -at /home/steve/Projects/maps/osm/${city}/${city}_buildings.tif
+```
 
 Export features to svg.  
-```bash
+```shell
 file=natural_earth_vector.gpkg
 layer=ne_50m_populated places
 width=1920
@@ -336,7 +356,7 @@ done
 ```
 
 Convert all 50m polygon layers.  
-```bash
+```shell
 ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like 'ne_50m%'" natural_earth_vector.gpkg | grep '=' | sed -e 's/^.*= //g' | while read layer; do
   geomtype=$(ogrinfo -sql "SELECT GeometryType(geom) FROM ${layer};" natural_earth_vector.gpkg | grep '=' | sed 's/^.*= //g')
   if [[ ${geomtype} =~ 'POLYGON' ]]; then
@@ -352,9 +372,9 @@ done
 ```
 
 Merge layers.  
-```bash
+```shell
 # use ogrmerge
-ogrmerge.py -overwrite_ds -single -f "ESRI Shapefile" -lco ENCODING=UTF-8 -o osm/city_roads.shp `ls osm/city/*/shape/roads.shp | tr '\n' ' '`
+ogrmerge.py -f VRT -o asean.vrt $(ls *.osm.pbf | tr '\n' ' ')
 
 # use vrt with union
 cat > ${file%.*}_contours.vrt <<- EOM
@@ -382,56 +402,78 @@ EOM
 ## SAGA-GIS
 
 Misc  
-`saga_cmd --cores 1`
+```shell
+saga_cmd --cores 1
+```
 
 Classify  
-`saga_cmd imagery_classification 1 -NCLUSTER 20 -MAXITER 0 -METHOD 1 -GRIDS N43W080_wgs84_500_5000.tif -CLUSTER N43W080_wgs84_500_5000_cluster.tif`
+```shell
+saga_cmd imagery_classification 1 -NCLUSTER 20 -MAXITER 0 -METHOD 1 -GRIDS N43W080_wgs84_500_5000.tif -CLUSTER N43W080_wgs84_500_5000_cluster.tif
+```
 
 Watershed  
-`saga_cmd imagery_segmentation 0 -OUTPUT 0 -DOWN 1 -JOIN 0 -THRESHOLD 0 -EDGE 1 -BBORDERS 0 -GRID N43W080_wgs84_500.tif -SEGMENTS N43W080_wgs84_500_segments.tif`
+```shell
+saga_cmd imagery_segmentation 0 -OUTPUT 0 -DOWN 1 -JOIN 0 -THRESHOLD 0 -EDGE 1 -BBORDERS 0 -GRID N43W080_wgs84_500.tif -SEGMENTS N43W080_wgs84_500_segments.tif
 
-`saga_cmd ta_channels 5 -THRESHOLD 1 -DEM N43W080_wgs84_500.tif -SEGMENTS N43W080_wgs84_500_segments.shp -BASINS N43W080_wgs84_500_basins.shp`
+saga_cmd ta_channels 5 -THRESHOLD 1 -DEM N43W080_wgs84_500.tif -SEGMENTS N43W080_wgs84_500_segments.shp -BASINS N43W080_wgs84_500_basins.shp
+```
 
 Raster to polygons  
-`saga_cmd shapes_grid 6 -GRID N43W080_wgs84.tif -POLYGONS N43W080_wgs84.shp`
+```shell
+saga_cmd shapes_grid 6 -GRID N43W080_wgs84.tif -POLYGONS N43W080_wgs84.shp
+```
 
 Raster values to vector  
-`saga_cmd shapes_grid 0`
+```shell
+saga_cmd shapes_grid 0
 
-`saga_cmd shapes_grid 1`
+saga_cmd shapes_grid 1
+```
 
 Arrows  
-`saga_cmd shapes_grid 15 -SURFACE N43W080_wgs84_500.tif -VECTORS N43W080_wgs84_500_gradient.shp`
+```shell
+saga_cmd shapes_grid 15 -SURFACE N43W080_wgs84_500.tif -VECTORS N43W080_wgs84_500_gradient.shp
+```
 
 Vector processing  
-`saga_cmd shapes_lines`
+```shell
+saga_cmd shapes_lines
 
-`saga_cmd shapes_points`
+saga_cmd shapes_points
 
-`saga_cmd shapes_polygons`
+saga_cmd shapes_polygons
+```
 
 Smoothing  
-`saga_cmd shapes_lines 7 -SENSITIVITY 3 -ITERATIONS 10 -PRESERVATION 10 -SIGMA 2 -LINES_IN N43W080_wgs84_500_segments.shp -LINES_OUT N43W080_wgs84_500_segments_smooth.shp`
+```shell
+saga_cmd shapes_lines 7 -SENSITIVITY 3 -ITERATIONS 10 -PRESERVATION 10 -SIGMA 2 -LINES_IN N43W080_wgs84_500_segments.shp -LINES_OUT N43W080_wgs84_500_segments_smooth.shp
+```
 
 Landscape  
-`saga_cmd ta_compound 0 -THRESHOLD 1 -ELEVATION N43W080_wgs84_500.tif -SHADE N43W080_wgs84_500_shade.tif -CHANNELS N43W080_wgs84_500_channels.shp -BASINS N43W080_wgs84_500_basins.shp`
+```shell
+saga_cmd ta_compound 0 -THRESHOLD 1 -ELEVATION N43W080_wgs84_500.tif -SHADE N43W080_wgs84_500_shade.tif -CHANNELS N43W080_wgs84_500_channels.shp -BASINS N43W080_wgs84_500_basins.shp
+```
 
 Terrain  
-`saga_cmd ta_morphometry 16 -DEM N43W080_wgs84_500.tif -TRI N43W080_wgs84_500_tri.shp`
+```shell
+saga_cmd ta_morphometry 16 -DEM N43W080_wgs84_500.tif -TRI N43W080_wgs84_500_tri.shp
 
-`saga_cmd ta_morphometry 17 -DEM N43W080_wgs84_500.tif -VRM N43W080_wgs84_500_vrm.tif`
+saga_cmd ta_morphometry 17 -DEM N43W080_wgs84_500.tif -VRM N43W080_wgs84_500_vrm.tif
 
-`saga_cmd ta_morphometry 18 -DEM N43W080_wgs84_500.tif -TPI N43W080_wgs84_500_tpi.tif`
+saga_cmd ta_morphometry 18 -DEM N43W080_wgs84_500.tif -TPI N43W080_wgs84_500_tpi.tif
+```
 
 TIN  
-`saga_cmd tin_tools 0 -GRID N48W092_N47W092_N48W091_N47W091_smooth.tif -TIN N48W092_N47W092_N48W091_N47W091_tin.shp`
+```shell
+saga_cmd tin_tools 0 -GRID N48W092_N47W092_N48W091_N47W091_smooth.tif -TIN N48W092_N47W092_N48W091_N47W091_tin.shp
 
-`saga_cmd tin_tools 3 -TIN N48W092_N47W092_N48W091_N47W091_tin.shp -POLYGONS N48W092_N47W092_N48W091_N47W091_poly.shp`
+saga_cmd tin_tools 3 -TIN N48W092_N47W092_N48W091_N47W091_tin.shp -POLYGONS N48W092_N47W092_N48W091_N47W091_poly.shp
+```
 
 ## Dataset Examples
 
 ### ALOS
-```bash
+```shell
 # alos merge directory
 dir=N005E095_N010E100
 gdal_merge.py `ls ${dir}/*_DSM.tif` -o ${dir}.tif
@@ -450,8 +492,9 @@ gdal_polygonize.py ${dir}_hillshade_mask.tif ${dir}_hillshade_polygon.gpkg hills
 ```
 
 ### Natural Earth  
+
 OGR/BASH scripts to work with Natural Earth vectors (download the data here: https://naciscdn.org/naturalearth/packages/natural_earth_vector.gpkg.zip)  
-```bash
+```shell
 #==============# 
 # earth-to-svg #
 #==============#
@@ -495,7 +538,7 @@ ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT
 done
 ```
 
-```bash
+```shell
 #================# 
 # earth-to-ortho #
 #================#
@@ -560,7 +603,7 @@ for x in $(seq -180 40 180); do
 done
 ```
 
-```bash
+```shell
 #===============# 
 # earth-to-json #
 #===============#
@@ -572,7 +615,7 @@ layer=ne_110m_admin_0_countries
 ogr2ogr -f GeoJSON ${layer}.geojson natural_earth_vector.gpkg ${layer}
 ```
 
-```bash
+```shell
 #=================# 
 # earth-to-raster #
 #=================#
@@ -595,7 +638,7 @@ done
 convert naturalearth_layers.tif naturalearth_layers.png
 ```
 
-```bash
+```shell
 #===============# 
 # earth-clipper #
 #===============#
@@ -621,7 +664,7 @@ ogrinfo -dialect sqlite -sql "SELECT name FROM sqlite_master WHERE name LIKE '$(
 done
 ```
 
-```bash
+```shell
 #================# 
 # earth-contours #
 #================#
@@ -642,8 +685,7 @@ ogr2ogr -append -update -makevalid -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -clipsr
 
 ## Misc
 
-```bash
+```shell
 # find disk usage
 du -h --max-depth=1 /home/steve/maps | sort -h
-
 ```
