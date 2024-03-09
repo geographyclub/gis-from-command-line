@@ -4,13 +4,13 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 
 ## TABLE OF CONTENTS
 
-Sections  
+### Sections
 1. [GDAL](#GDAL)  
 2. [OGR](#OGR)  
 3. [SAGA-GIS](#saga-gis)   
 4. [Dataset examples](#dataset-examples)  
-5. [Misc](#misc)
-Github Repos  
+5. [Misc](#misc)  
+### Github Repos
 1. [PostGIS Cookbook⤴](https://github.com/geographyclub/postgis-cookbook#readme)  
 2. [ImageMagick for Mapmakers⤴](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)  
 3. [Weather to Video⤴](https://github.com/geographyclub/weather-to-video)  
