@@ -11,10 +11,12 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 4. [Dataset examples](#dataset-examples)  
 5. [Misc](#misc)  
 ### Github Repos
-1. [PostGIS Cookbook⤴](https://github.com/geographyclub/postgis-cookbook#readme)  
-2. [ImageMagick for Mapmakers⤴](https://github.com/geographyclub/imagemagick-for-mapmakers#readme)  
-3. [Weather to Video⤴](https://github.com/geographyclub/weather-to-video)  
-4. [American Geography⤴](https://github.com/geographyclub/american-geography#readme)  
+1. [PostGIS Cookbook⤴](https://github.com/geographyclub/postgis-cookbook)  
+2. [American Geography⤴](https://github.com/geographyclub/american-geography) 
+3. [ImageMagick for Mapmakers⤴](https://github.com/geographyclub/imagemagick-for-mapmakers)  
+4. [Weather to Video⤴](https://github.com/geographyclub/weather-to-video)   
+### Extras
+1. [QGIS Expressions⤴](https://github.com/geographyclub/qgis-expressions)  
 
 ## GDAL
 
@@ -289,7 +291,7 @@ xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round
 ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
 ```
 
-Transform points for projected extent reference.  
+Transform to ortho.  
 ```shell
 rm -rf points1/*
 for x in $(seq -180 10 -160); do
@@ -320,6 +322,18 @@ gdalwarp -te_srs 'EPSG:4326' -te ${extent[0]} ${extent[1]} ${extent[2]} ${extent
 gdalwarp -te_srs 'EPSG:4326' -te ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} srtm/topo15_4000.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' /vsistdin/ topo_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.tif
 # clip vectors
 ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} -a_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' subunits_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.gpkg naturalearth/packages/natural_earth_vector.gpkg ne_10m_admin_0_map_subunits
+```
+
+osm-to-globe.  
+```bash
+file=Chicago.osm.pbf
+layer=lines
+extent=($(ogrinfo -so ${file} ${layer} | grep 'Extent' | sed -e 's/Extent: //g' -e 's/(\|)//g' -e 's/ - /, /g' -e 's/, / /g'))
+x_min=-45
+x_max=45
+y_min=0
+y_max=90
+ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} ${file%.osm.pbf}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${file}
 ```
 
 Convert layer to raster.  
@@ -683,6 +697,39 @@ gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -tr 0.04 0.04 -r cubicspline -cro
 
 ### clip contours ###
 ogr2ogr -append -update -makevalid -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -clipsrc 'naturalearth/packages/natural_earth_vector.gpkg' -clipsrclayer ${layer} -clipsrcwhere "name = '${name}'" -nlt MULTIPOLYGON -nln contour_clip top15_${name// /_}_${interval}m.gpkg top15_${name// /_}_${interval}m.gpkg contour
+```
+
+```shell
+#==================# 
+# country-to-globe #
+#==================#
+
+### select country ###
+name='Thailand'
+layer=ne_10m_admin_0_map_countries_lakes_biggest_part
+file=ne_10m_admin_0_map_countries_lakes_biggest_part.gpkg
+buffer=10
+x_min=-45
+x_max=45
+y_min=0
+y_max=90
+extent=($(ogrinfo -so -sql "SELECT Extent(ST_Buffer(geom,${buffer})) FROM ${layer} WHERE name = '${name}'" ${file} | grep 'Extent' | sed -e 's/Extent: //g' -e 's/(\|)//g' -e 's/ - /, /g' -e 's/, / /g'))
+
+### clip naturalearth at same scale & drop empty tables ###
+rm -rf $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg
+ogrinfo -dialect sqlite -sql "SELECT name FROM sqlite_master WHERE name LIKE '$(echo ${layer} | awk -F  "_" '{print $1"_"$2}')%' AND name NOT LIKE '%admin_0_countries_%'" ~/maps/naturalearth/packages/natural_earth_vector.gpkg | grep ' = ' | sed -e 's/^.* = //g' | while read table; do
+  ogr2ogr -update -append -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -nlt promote_to_multi -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} -clipsrc ${file} -clipsrcsql "SELECT Extent(ST_Buffer(geom,${buffer})) FROM ${layer} WHERE name = '${name}'" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ~/maps/naturalearth/packages/natural_earth_vector.gpkg ${table}
+  # drop empty tables
+  case `ogrinfo -so $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${table} | grep 'Feature Count' | sed -e 's/^.*: //g'` in
+    0)
+      ogrinfo -dialect sqlite -sql "DROP TABLE ${table}" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg
+      ;;
+	*)
+      echo 'DONE'
+      ;;
+  esac
+done
+
 ```
 
 ## Misc
