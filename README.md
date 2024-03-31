@@ -501,6 +501,9 @@ gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -ts $(echo $(gdalinfo ${dir}.tif 
 gdal_contour -a meters -i 10 ${dir}.tif ${dir}_contours.gpkg -nln contours
 gdal_contour -p -amin amin -amax amax -i 10 ${dir}.tif ${dir}_contours_polygons.gpkg -nln contours
 
+# contour levels
+gdal_contour -p -amin amin -amax amax -fl 100 topo15_4320_43200.tif topo15_4320_43200_polygons.gpkg
+
 # hillshade
 gdaldem hillshade -z 1 -az 315 -alt 45 ${dir}.tif ${dir}_hillshade.tif
 gdal_calc.py --overwrite --NoDataValue=0 -A ${dir}_hillshade.tif --calc="1*(A<=2)" --out=${dir}_hillshade_mask.tif
@@ -620,9 +623,9 @@ done
 ```
 
 ```shell
-#===============# 
-# earth-to-json #
-#===============#
+#==================# 
+# earth-to-geojson #
+#==================#
 
 ### select layer to convert ###
 layer=ne_110m_admin_0_countries
@@ -730,6 +733,14 @@ ogrinfo -dialect sqlite -sql "SELECT name FROM sqlite_master WHERE name LIKE '$(
   esac
 done
 
+# earth-to-gcp
+file=natural_earth_vector.gpkg
+extent=(-180 -90 180 90)
+x_min=-45
+x_max=45
+y_min=-90
+y_max=90
+ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} misc/${file%.}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${file}
 ```
 
 ## Misc
