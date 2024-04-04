@@ -703,43 +703,16 @@ ogr2ogr -append -update -makevalid -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -clipsr
 ```
 
 ```shell
-#==================# 
-# country-to-globe #
-#==================#
+#=====================# 
+# earth-georeferencer #
+#=====================#
 
-### select country ###
-name='Thailand'
-layer=ne_10m_admin_0_map_countries_lakes_biggest_part
-file=ne_10m_admin_0_map_countries_lakes_biggest_part.gpkg
-buffer=10
-x_min=-45
-x_max=45
-y_min=0
-y_max=90
-extent=($(ogrinfo -so -sql "SELECT Extent(ST_Buffer(geom,${buffer})) FROM ${layer} WHERE name = '${name}'" ${file} | grep 'Extent' | sed -e 's/Extent: //g' -e 's/(\|)//g' -e 's/ - /, /g' -e 's/, / /g'))
-
-### clip naturalearth at same scale & drop empty tables ###
-rm -rf $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg
-ogrinfo -dialect sqlite -sql "SELECT name FROM sqlite_master WHERE name LIKE '$(echo ${layer} | awk -F  "_" '{print $1"_"$2}')%' AND name NOT LIKE '%admin_0_countries_%'" ~/maps/naturalearth/packages/natural_earth_vector.gpkg | grep ' = ' | sed -e 's/^.* = //g' | while read table; do
-  ogr2ogr -update -append -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -nlt promote_to_multi -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} -clipsrc ${file} -clipsrcsql "SELECT Extent(ST_Buffer(geom,${buffer})) FROM ${layer} WHERE name = '${name}'" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ~/maps/naturalearth/packages/natural_earth_vector.gpkg ${table}
-  # drop empty tables
-  case `ogrinfo -so $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${table} | grep 'Feature Count' | sed -e 's/^.*: //g'` in
-    0)
-      ogrinfo -dialect sqlite -sql "DROP TABLE ${table}" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg
-      ;;
-	*)
-      echo 'DONE'
-      ;;
-  esac
-done
-
-# earth-to-gcp
 file=natural_earth_vector.gpkg
 extent=(-180 -90 180 90)
-x_min=-45
-x_max=45
-y_min=-90
-y_max=90
+x_min=-180
+x_max=180
+y_min=-30
+y_max=30
 ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} misc/${file%.}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${file}
 ```
 
