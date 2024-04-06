@@ -11,10 +11,11 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 4. [Dataset examples](#dataset-examples)  
 5. [Misc](#misc)  
 ### Github Repos
-1. [PostGIS Cookbook⤴](https://github.com/geographyclub/postgis-cookbook)  
-2. [American Geography⤴](https://github.com/geographyclub/american-geography) 
-3. [ImageMagick for Mapmakers⤴](https://github.com/geographyclub/imagemagick-for-mapmakers)  
-4. [Weather to Video⤴](https://github.com/geographyclub/weather-to-video)   
+1. [GRASS Scripts⤴](https://github.com/geographyclub/grass-scripts)  
+2. [PostGIS Cookbook⤴](https://github.com/geographyclub/postgis-cookbook)  
+3. [American Geography⤴](https://github.com/geographyclub/american-geography) 
+4. [ImageMagick for Mapmakers⤴](https://github.com/geographyclub/imagemagick-for-mapmakers)  
+5. [Weather to Video⤴](https://github.com/geographyclub/weather-to-video)   
 ### Extras
 1. [QGIS Expressions⤴](https://github.com/geographyclub/qgis-expressions)  
 
@@ -134,12 +135,39 @@ xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round
 gdalwarp -dstalpha -crop_to_cutline -cutline 'naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT Extent(geom) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' /vsistdin/ ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
-Make a shaded relief map from TOPO by setting zfactor, azimuth and altitude.  
+Make terrain rasters  
 ```shell
 zfactor=100
 azimuth=315
 altitude=45
 gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade.tif
+
+# loop zfactor
+rm -f topo15_4320_hillshade_zfactor*
+for a in $(seq 1 100 1000); do
+  zfactor=${a}
+  azimuth=315
+  altitude=45
+  gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo15_4320.tif topo15_4320_hillshade_zfactor${zfactor}.tif
+done
+
+# loop azimuth
+rm -f topo15_4320_hillshade_azimuth*
+for a in $(seq 0 10 350); do
+  zfactor=1000
+  azimuth=${a}
+  altitude=10
+  gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo15_4320.tif topo15_4320_hillshade_azimuth${a}.tif
+done
+```
+
+Polygonize terrain
+```shell
+# hillshade mask
+gdaldem hillshade -z 1 -az 315 -alt 45 topo15_4320.tif topo15_4320_hillshade.tif
+gdal_calc.py --overwrite --NoDataValue=0 -A topo15_4320_hillshade.tif --calc="1*(A<=2)" --out=topo15_4320_hillshade_mask.tif
+gdal_polygonize.py topo15_4320_hillshade_mask.tif topo15_4320_hillshade_mask.gpkg hillshade_mask
+
 ```
 
 Multiply Natural Earth and shaded relief rasters, then take a closer look at the Himalayas.  
@@ -668,18 +696,43 @@ layer=ne_10m_admin_0_countries
 proj='epsg:4326'
 
 ### clip layers at same scale & drop empty tables ###
-rm -rf $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg
+name="${name// /_}"
+name="${name//./}"
+rm -rf $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name}.gpkg
 ogrinfo -dialect sqlite -sql "SELECT name FROM sqlite_master WHERE name LIKE '$(echo ${layer} | awk -F  "_" '{print $1"_"$2}')%'" natural_earth_vector.gpkg | grep ' = ' | sed -e 's/^.* = //g' | while read table; do
-  ogr2ogr -update -append -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -nlt promote_to_multi -s_srs 'epsg:4326' -t_srs ${proj} -clipsrc 'natural_earth_vector.gpkg' -clipsrclayer ${layer} -clipsrcwhere "name = '${name}'" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg natural_earth_vector.gpkg ${table}
+  ogr2ogr -update -append -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -nlt promote_to_multi -s_srs 'epsg:4326' -t_srs ${proj} -clipsrc 'natural_earth_vector.gpkg' -clipsrclayer ${layer} -clipsrcwhere "name = '${name}'" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name}.gpkg natural_earth_vector.gpkg ${table}
   # drop empty tables
-  case `ogrinfo -so $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg ${table} | grep 'Feature Count' | sed -e 's/^.*: //g'` in
+  case `ogrinfo -so $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name}.gpkg ${table} | grep 'Feature Count' | sed -e 's/^.*: //g'` in
     0)
-      ogrinfo -dialect sqlite -sql "DROP TABLE ${table}" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name// /_}.gpkg
+      ogrinfo -dialect sqlite -sql "DROP TABLE ${table}" $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${name}.gpkg
       ;;
 	*)
       echo 'DONE'
       ;;
   esac
+done
+
+#===================# 
+# earth-clipper-all #
+#===================#
+
+ogrinfo -sql 'SELECT name FROM ne_10m_admin_0_countries' natural_earth_vector.gpkg | grep 'NAME (String) = ' | sed -e 's/^.*= //g' | while read name; do
+  filename="${name// /_}"
+  filename="${filename//./}"
+  filename=$(echo "${filename}" | tr '[:upper:]' '[:lower:]')
+  rm -rf $(echo ${layer} | awk -F  "_" '{print $1"_"$2}')_${filename}.gpkg
+  ogrinfo -dialect sqlite -sql "SELECT name FROM sqlite_master WHERE name LIKE 'ne_10m%'" natural_earth_vector.gpkg | grep ' = ' | sed -e 's/^.* = //g' | while read table; do
+    ogr2ogr -update -append -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -nlt promote_to_multi -s_srs 'epsg:4326' -t_srs 'epsg:4326' -clipsrc 'natural_earth_vector.gpkg' -clipsrclayer ne_10m_admin_0_countries -clipsrcwhere "name = '${name}'" ${filename}.gpkg natural_earth_vector.gpkg ${table}
+    # drop empty tables
+    case `ogrinfo -so ${filename}.gpkg ${table} | grep 'Feature Count' | sed -e 's/^.*: //g'` in
+      0)
+        ogrinfo -dialect sqlite -sql "DROP TABLE ${table}" ${filename}.gpkg
+        ;;
+	  *)
+        echo 'DONE'
+        ;;
+    esac
+  done
 done
 ```
 
@@ -718,7 +771,51 @@ ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${exten
 
 ## Misc
 
+File operations  
 ```shell
-# find disk usage
+# rename files/folders numerically
+filetype=jpg
+SAVEIFS=$IFS
+IFS=$(echo -en "\n\b")
+a=1
+for i in $1/*.${filetype}; do
+  new=$(printf "%04d" "$a")
+  mv -- "$i" "$1/${new}.${filetype}"
+  let a=a+1
+done
+IFS=$SAVEIFS
+
+# replace spaces with underscores
+find -name "* *" -type d | rename 's/ /_/g'    # do directories first
+find -name "* *" -type f | rename 's/ /_/g'
+
+# remove parentheses and brackets
+rename -n 's/\(|\[|\]|\)//g' *
+# remove characters in parentheses or brackets
+rename -n 's/\(.*\)|\[.*\]//g' *
+# remove spaces
+rename -n 's/\(.*\)|\[.*\]| //g' *
+
+# named or random file
+passed=$1
+if [ -d "${passed}" ]; then
+  dir=${1}
+  file1=`ls $dir/*.jpg | shuf -n1`
+  file2=`ls $dir/*.jpg | shuf -n1`
+else
+  dir=${1}
+  file1='${dir}/${2}'
+  file2='${dir}/${3}'
+fi
+```
+
+Disk usage  
+```shell
 du -h --max-depth=1 /home/steve/maps | sort -h
+```
+
+Ascii art  
+```shell
+# figlet
+figlet -d /usr/share/figlet/fonts -f Isometric1 seoul
 ```
