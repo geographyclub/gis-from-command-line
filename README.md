@@ -21,6 +21,11 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 
 ## GDAL
 
+Print histogram and other info.  
+```shell
+gdalinfo -hist ${file} | grep -A1 'buckets from' | tail -1
+```
+
 Resize the Natural Earth hypsometric raster to a web-safe width while keeping the aspect ratio.  
 ```shell
 file='HYP_HR_SR_OB_DR.tif'
