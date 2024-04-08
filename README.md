@@ -896,13 +896,13 @@ psql -d canada -c "CREATE TABLE census_profile_ontario_2021 (CENSUS_YEAR VARCHAR
 
 ### Wikipedia/Wikidata
 
+Import
 ```shell
 # wikitables
 # convert wikipedia tables
 ./.local/bin/wikitables 'List_of_terrestrial_ecoregions_(WWF)' > /home/steve/wikipedia/tables/table_wwf_ecoregions.json
 # split master list
 cat /home/steve/wikipedia/lists_master.csv | grep -i "mountains" | csvcut --columns=2 | tr -d '"' > /home/steve/wikipedia/lists_mountains.csv
-
 ```
 
 Wikipedia api  
@@ -1255,21 +1255,16 @@ bzcat /home/steve/maps/wikipedia/enwiki-latest-pages-articles-multistream.xml.bz
 # recompress
 bzip2 -zk /home/steve/maps/wikipedia/enwiki-latest-pages-articles-multistream.xml
 
-# create index
+# create my own index
 # line number
 awk -F '\t' 'BEGIN {OFS="\t";} {print NR,$3,$5}' /home/steve/maps/wikipedia/enwiki-latest-pages-articles-multistream.xml | tr -s ' ' | grep '<title>' | sed -e 's/ <title>//g' -e 's/<\/title>//g' -e 's/ <id>//g' -e 's/<\/id>//g' > /home/steve/maps/wikipedia/enwiki-latest-pages-articles-multistream-index.csv
 # byte offset
 fgrep --byte-offset '<title>' /home/steve/maps/wikipedia/enwiki-latest-pages-articles-multistream.xml | tr -d ':' | awk -F '\t' 'BEGIN {OFS="\t";} {print $1, $3, $5}' | tr -s ' ' | sed  -e 's/ <title>//g' -e 's/<\/title>//g' -e 's/ <id>//g' -e 's/<\/id>//g' > /home/steve/maps/wikipedia/enwiki-latest-pages-articles-multistream-index.csv
 
-# wiki <-> geonames (geonames.rdf)
-cat /home/steve/maps/geonames/all-geonames-rdf.txt | grep 'gn:wikipediaArticle' | sed -e 's/^.*gn:Feature rdf:about="http:\/\/sws\.geonames\.org\///g' -e 's/\/.*gn:wikipediaArticle rdf:resource="http:\/\/en\.wikipedia\.org\/wiki\//\t/g' -e 's/"\/>.*$//g' | grep -v "http" > /home/steve/maps/wikipedia/enwiki-geonames.csv
-# psql
-CREATE TABLE allcountries_wiki(geonameid int, enwiki_title text);
-COPY allcountries_wiki FROM '/home/steve/maps/wikipedia/enwiki-geonames.csv' CSV DELIMITER E'\t';
-ALTER TABLE allcountries ADD COLUMN enwiki_title text;
-UPDATE allcountries a SET enwiki_title = b.enwiki_title FROM allcountries_wiki b WHERE a.geonameid = b.geonameid;
-# convert url characters
-cat /home/steve/maps/wikipedia/enwiki-geonames.csv | while read line; do urlencode -d ${line} | sed -e 's/_/ /g' -e 's/ /\t/1' >> /home/steve/maps/wikipedia/enwiki-geonames.tmp; done
+# import wiki index into psql
+CREATE TABLE enwiki_index(enwiki_offset bigint, enwiki_title text, enwiki_id bigint);
+COPY enwiki_index FROM '/home/steve/wikipedia/enwiki-latest-pages-articles-multistream-index.csv' CSV DELIMITER E'\t';
+ALTER TABLE enwiki_index ADD COLUMN fid serial PRIMARY KEY;
 
 # xml
 # with geom
@@ -1318,6 +1313,16 @@ cat /home/steve/maps/wikipedia/${file}_links.xml | perl -MHTML::Entities -pe 'de
 # get fid
 echo "fid"$'\t'"intro" > /home/steve/maps/wikipedia/wwf_ecoregion/wwf_ecoregion_links.csv
 cat /home/steve/maps/wikipedia/wwf_ecoregion/wwf_ecoregion.csv | grep -noP '(?=\[\[).*?(?<=\]\])' | sed -e 's/:/\t/g' -e 's/\[\[/'"'''"'/g' -e 's/\]\]/'"'''"'/g' | while IFS=$'\t' read -a array; do fid=`sed -n "${array[0]}p" /home/steve/maps/wikipedia/wwf_ecoregion/wwf_ecoregion.csv | awk -F '\t' '{print $2}'`; def=`grep "${array[1]}" /home/steve/maps/wikipedia/wwf_ecoregion/wwf_ecoregion_links.tmp`; echo ${fid}$'\t'${def} | awk -F\t '$2' >> /home/steve/maps/wikipedia/wwf_ecoregion/wwf_ecoregion_links.csv; done
+
+# wiki <-> geonames (geonames.rdf)
+cat /home/steve/maps/geonames/all-geonames-rdf.txt | grep 'gn:wikipediaArticle' | sed -e 's/^.*gn:Feature rdf:about="http:\/\/sws\.geonames\.org\///g' -e 's/\/.*gn:wikipediaArticle rdf:resource="http:\/\/en\.wikipedia\.org\/wiki\//\t/g' -e 's/"\/>.*$//g' | grep -v "http" > /home/steve/maps/wikipedia/enwiki-geonames.csv
+# psql
+CREATE TABLE allcountries_wiki(geonameid int, enwiki_title text);
+COPY allcountries_wiki FROM '/home/steve/maps/wikipedia/enwiki-geonames.csv' CSV DELIMITER E'\t';
+ALTER TABLE allcountries ADD COLUMN enwiki_title text;
+UPDATE allcountries a SET enwiki_title = b.enwiki_title FROM allcountries_wiki b WHERE a.geonameid = b.geonameid;
+# convert url characters
+cat /home/steve/maps/wikipedia/enwiki-geonames.csv | while read line; do urlencode -d ${line} | sed -e 's/_/ /g' -e 's/ /\t/1' >> /home/steve/maps/wikipedia/enwiki-geonames.tmp; done
 ```
 
 ## Misc
