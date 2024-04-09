@@ -152,16 +152,19 @@ gdalwarp -dstalpha -crop_to_cutline -cutline 'naturalearth/packages/natural_eart
 
 Make contours from dem  
 ```shell
+# lines
 file=/home/steve/maps/srtm/topo15.grd
 gdal_contour --config GDAL_CACHEMAX 500 -lco GEOMETRY=AS_WKT -f "CSV" -a elev -fl 500 ${file}
 gdal_contour --config GDAL_CACHEMAX 500 -f "GPKG" -a meters -i 100 /home/steve/maps/srtm/topo15_4000_40000.tif /home/steve/maps/srtm/topo15_4000_40000_100m.gpkg
 gdal_contour --config GDAL_CACHEMAX 500 -f "PostgreSQL" -a elev -i 10 ${file} PG:dbname=world topo15_4000_40000_10m
 
-# measured
-ogr2ogr -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10
+# polygons
+gdal_contour -p -f "GPKG" -amin amin -amax amax -i 100 topo15_4320_ocean.tif topo15_4320_ocean_100m_polygon.gpkg
 
-# polygon
 ogr2ogr -overwrite -f "SQLite" -dsco SPATIALITE=YES -lco OVERWRITE=YES -dialect sqlite -sql "SELECT elev, ST_MakePolygon(GEOMETRY) FROM topo15_43200 WHERE elev IN (-10000,-9000,-8000,-7000,-6000,-5000,-4000,-3000,-2000,-1000,-900,-800,-700,-600,-500,-400,-300,-200,-100,0,100,200,300,400,500,600,700,800,900,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500,6000,6500,7000,7500,8000);" /home/steve/maps/srtm/srtm15/topo15_43200_polygon.sqlite -t_srs "EPSG:4326" -nlt POLYGON -nln topo15_43200_polygon -explodecollections /home/steve/maps/srtm/srtm15/topo15_43200.sqlite
+
+# values
+ogr2ogr -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10
 ```
 
 Make terrain from dem  
@@ -881,9 +884,14 @@ osmfilter /home/steve/maps/osm/planet-latest.o5m --keep= --keep-ways="highway=" 
 
 ### SRTM
 
+Download  
 ```shell
-# download
 wget --user --password http://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/N44W080.SRTMGL1.hgt.zip
+```
+
+Extract ocean and make positive for watershed analysis  
+```shell
+gdal_calc.py --overwrite --NoDataValue=0 -A topo15_4320.tif --outfile=topo15_4320_ocean.tif --calc="(A + 10207.5)*(A<=100)"
 ```
 
 ### StatsCan
