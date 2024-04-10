@@ -1497,7 +1497,7 @@ git push -f
 git pull origin main
 
 # reset
-git reset --hard f10169783b7134ac3225c04197d7ca71272f3357
+git reset --hard *commit hash*
 # clone with ssh (passphrase for key /home/steve/.ssh/id_ed25519)
 git clone git@github.com:geographyclub/imagemagick-for-mapmakers.git
 # set authentication to ssh
