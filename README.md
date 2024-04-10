@@ -904,9 +904,8 @@ psql -d canada -c "CREATE TABLE census_profile_ontario_2021 (CENSUS_YEAR VARCHAR
 
 ### Wikipedia/Wikidata
 
-Import
+Wikitables
 ```shell
-# wikitables
 # convert wikipedia tables
 ./.local/bin/wikitables 'List_of_terrestrial_ecoregions_(WWF)' > /home/steve/wikipedia/tables/table_wwf_ecoregions.json
 # split master list
@@ -924,17 +923,18 @@ https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=rocky mount
 # generator
 https://en.wikipedia.org/w/api.php?format=json&action=query&generator=categorymembers&gcmcontinue=&gcmlimit=max&gcmtype=subcat&gcmtitle=Category:Terrestrial%20ecoregions
 
-# P1082 population
-curl 'https://www.wikidata.org/w/api.php?action=wbgetentities&sites=enwiki&format=json&fprops=claims&titles=Flatbush,_Brooklyn'
-
 # example extract and mapdata (from wikipedia titles)
 hood='Flatbush,_Brooklyn'
 url=$(curl 'https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts|mapdata&exchars=200&exlimit=max&explaintext&exintro&titles='${hood} | jq '..|.mapdata?' | grep '.map' | sed -e 's/^.*w\/api/https\:\/\/en\.wikipedia\.org\/w\/api/g' -e 's/\.map.*$/\.map/g')
 curl -q ${url} | jq '.jsondata.data' > ${hood}.geojson
+
+# wikidata
+curl 'https://www.wikidata.org/w/api.php?action=wbgetentities&sites=enwiki&format=json&fprops=claims&titles=Flatbush,_Brooklyn'
 ```
 
 SPARQL  
-```shell
+
+```sparql
 # list all info
 SELECT ?predicate ?object
 WHERE
@@ -1205,8 +1205,6 @@ SELECT DISTINCT ?city ?cityLabel ?nickname ?anthem ?motto ?website ?portal ?geon
   OPTIONAL{ ?city wdt:P1566 ?geonames.}
 }
 
-# logo P154
-
 #defaultView:Table
 #village - Q532
 #human settlement - Q486972
@@ -1236,10 +1234,14 @@ WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en".  }
   OPTIONAL { ?item wdt:P625 ?coordinates }
 }
+
+# for longer queries
+LIMIT 10
+OFFSET 10
 ```
 
 Some useful codes  
-```shell
+```sparql
 #entities
 admin1: Q10864048
 biome: Q101998
@@ -1250,10 +1252,13 @@ geomorphological unit: Q12766313
 group of lakes: Q5926864
 mountain range: Q46831
 wwf ecoregion: Q6617741
+
+# properties
 wd:Q333291 ?abstract
 wdt:P18 ?img
+wdt: P1269 ?facet.
 area: P2046
-?wiki wdt: P1269 ?facet.
+logo: P154
 ```
 
 Wikipedia dump  
@@ -1427,19 +1432,19 @@ sed -n '/^=\+ *Location/{n;p}'
 sed 's/.foo/&bar/'
 ```
 
-Ascii art  
+ascii art  
 ```shell
 # figlet
 figlet -d /usr/share/figlet/fonts -f Isometric1 seoul
 ```
 
-XML  
+xmlstarlet  
 ```shell
 # xmlstarlet
 xmlstarlet sel -t -v xml/page/revision/text
 ```
 
-JSON  
+jq  
 ```shell
 # searching
 cat kg.json | jq -r '.[] | ."Population distribution"'
@@ -1634,7 +1639,7 @@ ffmpeg -y -r 1/10 -i $PWD/data/${stream}/%03d.svg -i "${audio}" -shortest -c:v l
 ffmpeg -y -t 100 -r 24 -i '/home/steve/git/weatherchan/maps/atlas/%03d.svg' -i '/home/steve/Downloads/night vibes korean underground r&b + hiphop (14 songs).mp3' -shortest -vf drawtext="fontsize=60:fontfile=/home/steve/.fonts/fonts-master/ofl/montserrat/Montserrat-Regular.ttf:textfile=/home/steve/git/weatherchan/metar/metar_af.txt:y=h-line_h:x=-100*t" -c:v libx264 -c:a aac -crf 23 -pix_fmt yuv420p -preset fast -threads 0 -movflags +faststart "/home/steve/Downloads/test.mp4"
 ```
 
-FFMPEG  
+ffmpeg  
 ```shell
 # capture screen
 ffmpeg -video_size 1024x768 -framerate 25 -f x11grab -i :0.0+0+0 ~/output.mp4
