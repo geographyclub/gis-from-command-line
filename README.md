@@ -10,12 +10,13 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 3. [SAGA-GIS](#saga-gis)   
 4. [Dataset examples](#dataset-examples)  
 5. [Misc](#misc)  
+
 ### Github Repos
-1. [GRASS Scripts⤴](https://github.com/geographyclub/grass-scripts)  
-2. [PostGIS Cookbook⤴](https://github.com/geographyclub/postgis-cookbook)  
-3. [American Geography⤴](https://github.com/geographyclub/american-geography) 
-4. [ImageMagick for Mapmakers⤴](https://github.com/geographyclub/imagemagick-for-mapmakers)  
-5. [Weather to Video⤴](https://github.com/geographyclub/weather-to-video)   
+1. [PostGIS Cookbook ⤴](https://github.com/geographyclub/postgis-cookbook)  
+2. [American Geography ⤴](https://github.com/geographyclub/american-geography) 
+3. [ImageMagick for Mapmakers ⤴](https://github.com/geographyclub/imagemagick-for-mapmakers)  
+4. [Weather-to-Video ⤴](https://github.com/geographyclub/weather-to-video)   
+
 ### Extras
 1. [QGIS Expressions⤴](https://github.com/geographyclub/qgis-expressions)  
 
@@ -88,11 +89,6 @@ xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round
 gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
-ogr2ogr pipe to ogrinfo.  
-```shell
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -f GeoJSON -s_srs 'epsg:4326' -t_srs "+proj=ortho" /vsistdout/ -nln ${layer1} PG:dbname=world ${layer1} | ogrinfo -dialect sqlite -sql "SELECT X(Centroid(geometry)), Y(Centroid(geometry)) FROM ${layer1}" /vsistdin/
-```
-
 Some other popular map projections and their PROJ definitions.  
 | Name | PROJ |
 |------|------|
@@ -101,6 +97,9 @@ Some other popular map projections and their PROJ definitions.
 | Lambert Conformal Conic | +proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45 |
 | Stereographic | +proj=stere +lon_0=-119 +lat_0=36 +lat_ts=36 |
 | Van der Grinten | +proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m |
+| Near perspective | +proj=nsper +h=300000 +lat_0=14 +lon_0=101 |
+| Tilted Perspective | +proj=tpers +lat_0=40 +lon_0=0 +h=5500000 +tilt=45 +azimuth=90 +x_0=0 +y_0=0 +R=6378137 +units=m +no_defs |
+
 
 Georeference by extent.  
 ```shell
@@ -310,6 +309,16 @@ cat /home/steve/Projects/maps/places.csv | while read line; do
 done
 ```
 
+Get raster extents and import into postgis  
+```shell
+psql -d world -c "DROP TABLE IF EXISTS places_extent; CREATE TABLE places_extent (fid serial primary key, name TEXT, geom geometry(POLYGON, 4326));"
+# get extents and insert into table
+ls ~/base-maps/hillshade/places/*.png | while read file; do
+  coords=($(gdalinfo ${file} | sed -E 's/[[:space:]]+//g' | grep 'LowerLeft\|UpperRight' | sed -e 's/LowerLeft(//g' -e 's/UpperRight(//g' -e 's/)//g' -e 's/,/ /g' | tr '\n' ' '))
+  psql -d world -c "INSERT INTO places_extent (name, geom) VALUES ('"$(basename ${file%.*})"', ST_SetSRID(ST_MakeEnvelope(${coords[0]}, ${coords[1]}, ${coords[2]}, ${coords[3]}), 4326));" 
+done
+```
+
 ## OGR
 
 Print info from ogr package with *ogrinfo*.  
@@ -362,6 +371,11 @@ Export with *ogrinfo*
 ogrinfo --config SPATIALITE_SECURITY=relaxed -dialect Spatialite -sql "SELECT ExportGeoJSON2('ne_110m_admin_0_countries', 'geom', 'ne_110m_admin_o_countries.geojson')" natural_earth_vector.gpkg
 ```
 
+ogr2ogr pipe to ogrinfo.  
+```shell
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -f GeoJSON -s_srs 'epsg:4326' -t_srs "+proj=ortho" /vsistdout/ -nln ${layer1} PG:dbname=world ${layer1} | ogrinfo -dialect sqlite -sql "SELECT X(Centroid(geometry)), Y(Centroid(geometry)) FROM ${layer1}" /vsistdin/
+```
+
 Select vector layers processed from the Natural Earth geopackage.  
 ```shell
 ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' countries.gpkg naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries
@@ -411,13 +425,13 @@ ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -
 
 Reproject with gcp  
 ```bash
-file=Chicago.osm.pbf
+file=London.osm.pbf
 layer=lines
 extent=($(ogrinfo -so ${file} ${layer} | grep 'Extent' | sed -e 's/Extent: //g' -e 's/(\|)//g' -e 's/ - /, /g' -e 's/, / /g'))
-x_min=-45
-x_max=45
-y_min=0
-y_max=90
+x_min=-180
+x_max=180
+y_min=-45
+y_max=45
 ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} ${file%.osm.pbf}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${file}
 ```
 
@@ -589,6 +603,8 @@ saga_cmd tin_tools 3 -TIN N48W092_N47W092_N48W091_N47W091_tin.shp -POLYGONS N48W
 
 ### ALOS
 ```shell
+# download from https://www.eorc.jaxa.jp/ALOS/en/dataset/aw3d30/aw3d30_e.htm
+
 # alos merge directory
 dir=N005E095_N010E100
 gdal_merge.py `ls ${dir}/*_DSM.tif` -o ${dir}.tif
@@ -600,7 +616,7 @@ gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -ts $(echo $(gdalinfo ${dir}.tif 
 gdal_contour -a meters -i 10 ${dir}.tif ${dir}_contours.gpkg -nln contours
 gdal_contour -p -amin amin -amax amax -i 10 ${dir}.tif ${dir}_contours_polygons.gpkg -nln contours
 
-# contour levels
+# contour slices
 gdal_contour -p -amin amin -amax amax -fl 100 topo15_4320_43200.tif topo15_4320_43200_polygons.gpkg
 
 # hillshade
@@ -904,6 +920,25 @@ psql -d canada -c "CREATE TABLE census_profile_ontario_2021 (CENSUS_YEAR VARCHAR
 
 ### Wikipedia/Wikidata
 
+Wikidata query output  
+```shell
+cat ecoregions.tsv | awk -F '\t' '{print $3}' | while read url; do
+  echo ${url}
+  w3m -dump "${url}" | awk '/^Physical\[edit\]/,/Climate\[edit\]/' || break
+done
+
+cat ecoregions.tsv | awk -F '\t' '{print $3}' | while read url; do w3m -dump "${url}"; done
+
+
+lynx -dump ${url}
+```
+
+Import wikidata query results into psql  
+```shell
+psql -d world -c "DROP TABLE IF EXISTS wiki_ecoregions; CREATE TABLE wiki_ecoregions($(head -1 ecoregions.tsv | sed -e 's/\t/ VARCHAR,/g' -e 's/$/ VARCHAR/g'));"
+psql -d world -c "\COPY wiki_ecoregions FROM 'ecoregions.tsv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true);"
+```
+
 Wikitables
 ```shell
 # convert wikipedia tables
@@ -914,12 +949,18 @@ cat /home/steve/wikipedia/lists_master.csv | grep -i "mountains" | csvcut --colu
 
 Wikipedia api  
 ```shell
+# by pagename
+https://en.wikipedia.org/w/api.php?action=parse&page=Atlantic_Equatorial_coastal_forests&format=json
+
 # by coordinate (gscoord, gspage, gsbbox)
 https://en.wikipedia.org/w/api.php?action=query&format=json&list=geosearch&gscoord=40.418670|-3.699389&gsradius=10000&gslimit=100
+
 # by title
 https://en.wikipedia.org/w/api.php?action=query&format=json&prop=coordinates|description|extracts&exintro=&explaintext=&titles=Amazon River
+
 # search
 https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=rocky mountains
+
 # generator
 https://en.wikipedia.org/w/api.php?format=json&action=query&generator=categorymembers&gcmcontinue=&gcmlimit=max&gcmtype=subcat&gcmtitle=Category:Terrestrial%20ecoregions
 
@@ -951,7 +992,7 @@ WHERE
 ORDER BY ?object
 
 # sitelinks
-SELECT DISTINCT ?wiki ?label ?url ?geom WHERE {
+SELECT DISTINCT ?eco_id ?wiki ?label ?url ?geom WHERE {
   VALUES (?link_from) {(<https://en.wikipedia.org/wiki/List_of_terrestrial_ecoregions_(WWF)>)}
   ?link_from schema:name ?title .
   SERVICE wikibase:mwapi {
@@ -965,8 +1006,9 @@ SELECT DISTINCT ?wiki ?label ?url ?geom WHERE {
     ?wiki wikibase:apiOutputItem mwapi:item .
     ?label wikibase:apiOutput mwapi:title .
   }
-FILTER (bound(?wiki))
-OPTIONAL {?wiki wdt:P625 ?geom}
+  FILTER (bound(?wiki))
+  OPTIONAL {?wiki wdt:P625 ?geom}
+  OPTIONAL {?wiki wdt:P1294 ?eco_id}  # Add this line to fetch the WWF eco_id
 }
 
 # pages
@@ -1434,6 +1476,9 @@ sed 's/.foo/&bar/'
 
 ascii art  
 ```shell
+# jp2a
+jp2a --color --html --html-fontsize=10 --width=150 --background=light --output=frame_000007.html frame_000007.jpg
+
 # figlet
 figlet -d /usr/share/figlet/fonts -f Isometric1 seoul
 ```
