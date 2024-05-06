@@ -6,8 +6,8 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 
 ### Sections
 1. [GDAL](#GDAL)  
-   - gdalinfo
-   - gdalwarp
+   • gdalinfo
+   • gdalwarp
 2. [OGR](#OGR)  
 3. [SAGA-GIS](#saga-gis)   
 4. [Dataset examples](#dataset-examples)  
@@ -23,7 +23,7 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 
 ### gdalinfo
 
-Lists information about a raster dataset. Read the (docs)[https://gdal.org/programs/gdalinfo.html].  
+Lists information about a raster dataset. Read the [docs]([https://gdal.org/programs/gdalinfo.html).  
 ```
 gdalinfo [--help] [--help-general]
          [-json] [-mm] [-stats | -approx_stats] [-hist]
@@ -56,7 +56,7 @@ gdalinfo ${file} | grep -E '^Lower Left|^Upper Right' | sed -e 's/Upper Left  (/
 
 ### gdalwarp
 
-Image reprojection and warping utility. Read the (docs)[https://gdal.org/programs/gdalwarp.html].  
+Image reprojection and warping utility. Read the [docs](https://gdal.org/programs/gdalwarp.html).  
 ```
 gdalwarp [--help] [--long-usage] [--help-general]
          [--quiet] [-overwrite] [-of <output_format>] [-co <NAME>=<VALUE>]... [-s_srs <srs_def>]
@@ -130,7 +130,7 @@ xy=($(ogrinfo ${file_naturalearth} -sql "SELECT round(ST_X(ST_Centroid(geom))), 
 gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
-Some popular map projections and their PROJ definitions. Read the (docs)[https://proj.org/en/9.4/operations/projections/index.html].  
+Some popular map projections and their PROJ definitions. Read the [docs](https://proj.org/en/9.4/operations/projections/index.html).  
 | Name | PROJ |
 |------|-------|
 | Azimuthal Equidistant | +proj=aeqd +lat_0=45 +lon_0=-80 +a=1000000 +b=1000000 +over |
@@ -180,7 +180,7 @@ gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${
 
 ### gdal_translate
 
-Converts raster data between different formats. Read the (docs)[https://gdal.org/programs/gdal_translate.html].  
+Converts raster data between different formats. Read the [docs](https://gdal.org/programs/gdal_translate.html).  
 ```
 gdal_translate [--help] [--help-general] [--long-usage]
    [-ot {Byte/Int8/Int16/UInt16/UInt32/Int32/UInt64/Int64/Float32/Float64/
@@ -240,7 +240,7 @@ gdal_translate -projwin -180 90 180 0 ${file} /vsistdout/ | gdalwarp -overwrite 
 
 ### gdal_contour
 
-Builds vector contour lines from a raster elevation model. Read the (docs)[https://gdal.org/programs/gdal_contour.html].  
+Builds vector contour lines from a raster elevation model. Read the [docs](https://gdal.org/programs/gdal_contour.html).  
 ```
 gdal_contour [--help] [--help-general]
              [-b <band>] [-a <attribute_name>] [-amin <attribute_name>] [-amax <attribute_name>]
@@ -278,7 +278,7 @@ gdal_contour --config GDAL_CACHEMAX 500 -lco GEOMETRY=AS_WKT -f "CSV" -a elev -f
 
 ### gdaldem
 
-Tools to analyze and visualize DEMs. Read the (docs)[https://gdal.org/programs/gdaldem.html].  
+Tools to analyze and visualize DEMs. Read the [docs](https://gdal.org/programs/gdaldem.html).  
 
 Generate a shaded relief map  
 ```
