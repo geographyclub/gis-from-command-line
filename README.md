@@ -6,6 +6,8 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 
 ### Sections
 1. [GDAL](#GDAL)  
+   - gdalinfo
+   - gdalwarp
 2. [OGR](#OGR)  
 3. [SAGA-GIS](#saga-gis)   
 4. [Dataset examples](#dataset-examples)  
@@ -17,160 +19,294 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 3. [ImageMagick for Mapmakers ⤴](https://github.com/geographyclub/imagemagick-for-mapmakers)  
 4. [Weather-to-Video ⤴](https://github.com/geographyclub/weather-to-video)   
 
-### Extras
-1. [QGIS Expressions⤴](https://github.com/geographyclub/qgis-expressions)  
-
 ## GDAL
 
-Print histogram and other info.  
-```shell
-gdalinfo -hist ${file} | grep -A1 'buckets from' | tail -1
+### gdalinfo
+
+Lists information about a raster dataset. Read the (docs)[https://gdal.org/programs/gdalinfo.html].  
+```
+gdalinfo [--help] [--help-general]
+         [-json] [-mm] [-stats | -approx_stats] [-hist]
+         [-nogcp] [-nomd] [-norat] [-noct] [-nofl]
+         [-checksum] [-listmdd] [-mdd <domain>|all]
+         [-proj4] [-wkt_format {WKT1|WKT2|<other_format>}]...
+         [-sd <subdataset>] [-oo <NAME>=<VALUE>]... [-if <format>]...
+         <datasetname>
 ```
 
-Resize the Natural Earth hypsometric raster to a web-safe width while keeping the aspect ratio.  
-```shell
+Example:
+
+Print histogram  
+```
+file='topo15_4320.tif'
+gdalinfo -hist ${file} | grep -A1 'buckets from' | tail -1 | xargs
+```
+
+Print width and height  
+```
+file='topo15_4320.tif'
+gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/, / /g'
+```
+
+Print extent  
+```
+file='topo15_4320.tif'
+gdalinfo ${file} | grep -E '^Lower Left|^Upper Right' | sed -e 's/Upper Left  (//g' -e 's/Lower Left  (//g' -e 's/Upper Right (//g' -e 's/Lower Right (//g' -e 's/).*$//g' -e 's/,//g' | xargs
+```
+
+### gdalwarp
+
+Image reprojection and warping utility. Read the (docs)[https://gdal.org/programs/gdalwarp.html].  
+```
+gdalwarp [--help] [--long-usage] [--help-general]
+         [--quiet] [-overwrite] [-of <output_format>] [-co <NAME>=<VALUE>]... [-s_srs <srs_def>]
+         [-t_srs <srs_def>]
+         [[-srcalpha]|[-nosrcalpha]]
+         [-dstalpha] [-tr <xres> <yres>|square] [-ts <width> <height>] [-te <xmin> <ymin> <max> <ymaX]
+         [-te_srs <srs_def>] [-r near|bilinear|cubic|cubicspline|lanczos|average|rms|mode|min|max|med|q1|q3|sum]
+         [-ot Byte|Int8|[U]Int{16|32|64}|CInt{16|32}|[C]Float{32|64}]
+         <src_dataset_name>... <dst_dataset_name>
+
+Advanced options:
+         [-wo <NAME>=<VALUE>]... [-multi] [-s_coord_epoch <epoch>] [-t_coord_epoch <epoch>] [-ct <string>]
+         [[-tps]|[-rpc]|[-geoloc]]
+         [-order <1|2|3>] [-refine_gcps <tolerance> [<minimum_gcps>]] [-to <NAME>=<VALUE>]...
+         [-et <err_threshold>] [-wm <memory_in_mb>] [-srcnodata <value>[ <value>...]]
+         [-dstnodata <value>[ <value>...]] [-tap] [-wt Byte|Int8|[U]Int{16|32|64}|CInt{16|32}|[C]Float{32|64}]
+         [-cutline <datasource>|<WKT>] [-cutline_srs <srs_def>] [-cwhere <expression>]
+         [[-cl <layername>]|[-csql <query>]]
+         [-cblend <distance>] [-crop_to_cutline] [-nomd] [-cvmd <meta_conflict_value>] [-setci]
+         [-oo <NAME>=<VALUE>]... [-doo <NAME>=<VALUE>]... [-ovr <level>|AUTO|AUTO-<n>|NONE]
+         [[-vshift]|[-novshiftgrid]]
+         [-if <format>]... [-srcband <band>]... [-dstband <band>]...
+```
+
+Example:
+
+Resize raster  
+```
+# assign new width and keep aspect ratio
 file='HYP_HR_SR_OB_DR.tif'
 width=1920
-gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} hyp.tif
+gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} ${file%.*}_${width}.tif
+
+# assign new resolution
+file='HYP_HR_SR_OB_DR.tif'
+xres=1
+yres=1
+gdalwarp -overwrite -tr ${xres} ${yres} -r cubicspline ${file} ${file%.*}_xres${xres}_yres${yres}.tif
+
+# scale by a factor of original width
+file='topo15_4320.tif'
+factor=10
+new_width=$(echo $(gdalinfo ${file}| grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/${factor} | bc)
+gdalwarp -overwrite -ts ${new_width} 0 -r cubicspline ${file} ${file%.*}_${new_width}.tif
 ```
 
-Resize raster as a fraction of its original size using output from *gdalinfo*.  
-```shell
-gdalwarp -overwrite -ts $(echo $(gdalinfo hyp.tif | grep "Size is" | sed 's/Size is //g' | sed 's/,.*$//g')/10 | bc) 0 -r cubicspline hyp.tif hyp_192.tif
+Reproject raster  
 ```
-
-Set prime meridian on 0-360° raster.  
-```shell
-gdalwarp -overwrite -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "+proj=longlat +ellps=WGS84 +pm=-360 +datum=WGS84 +no_defs +lon_wrap=360 +over" hyp.tif hyp_180pm.tif
-```
-
-Set prime meridian on -180-180° raster by desired degree.  
-```shell
-file='hyp.tif'
-prime=180
-gdalwarp -overwrite -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${prime}dE" ${file} ${file%.*}_180pm.tif
-```
-
-Set prime meridian by desired placename. Use *ogrinfo* to query the Natural Earth geopackage.  
-```shell
-file='hyp.tif'
-name='Toronto'
-prime=$(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Shift_Longitude(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g')
-gdalwarp -overwrite -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${prime}dE" ${file} ${file%.*}_${prime}pm.tif
-```
-
-Transform from lat-long to the popular Web Mercator projection using EPSG code, setting extent between -85* and 80* latitude.  
-```shell
+# with epsg code, setting extent between -85° and 80° latitude for web mercator
 file='hyp.tif'
 proj='epsg:3857'
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs ${proj} -te -180 -85 180 80 -te_srs EPSG:4326 ${file} ${file%.*}_"${proj//:/_}".tif
-```
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs ${proj} -te -180 -85 180 80 -te_srs 'EPSG:4326' ${file} ${file%.*}_epsg"${proj//:/_}".tif
 
-Transform from lat-long to the Times projection using PROJ definition.  
-```shell
+# with proj definition
 file='hyp.tif'
 proj='+proj=times'
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
-```
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs "${proj}" ${file} ${file%.*}_"$(echo ${proj} | sed -e 's/+proj=//g' -e 's/ +.*$//g')".tif
 
-Transform from lat-long to an orthographic projection with a custom PROJ definition. Again use *ogrinfo* to query the Natural Earth geopackage.  
-```shell
+# with custom proj definition using place name from natural earth
 file='hyp.tif'
+file_naturalearth='/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg'
 name='Seoul'
-xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
-```
+xy=($(ogrinfo ${file_naturalearth} -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 
-Center the orthographic projection on the centroid of a country using the same method.  
-```shell
+# with custom proj definition using country centroid from natural earth
 file='hyp.tif'
+file_naturalearth='/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg'
 name='Ukraine'
-xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
+xy=($(ogrinfo ${file_naturalearth} -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
-Some other popular map projections and their PROJ definitions.  
+Some popular map projections and their PROJ definitions. Read the (docs)[https://proj.org/en/9.4/operations/projections/index.html].  
 | Name | PROJ |
-|------|------|
+|------|-------|
 | Azimuthal Equidistant | +proj=aeqd +lat_0=45 +lon_0=-80 +a=1000000 +b=1000000 +over |
 | Lambert Azimuthal Equal Area | +proj=laea +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m |
 | Lambert Conformal Conic | +proj=lcc +lon_0=-90 +lat_1=33 +lat_2=45 |
 | Stereographic | +proj=stere +lon_0=-119 +lat_0=36 +lat_ts=36 |
 | Van der Grinten | +proj=vandg +lon_0=0 +x_0=0 +y_0=0 +R_A +a=6371000 +b=6371000 +units=m |
 | Near perspective | +proj=nsper +h=300000 +lat_0=14 +lon_0=101 |
-| Tilted Perspective | +proj=tpers +lat_0=40 +lon_0=0 +h=5500000 +tilt=45 +azimuth=90 +x_0=0 +y_0=0 +R=6378137 +units=m +no_defs |
+| Tilted Perspective | +proj=tpers +lat_0=40 +lon_0=0 +h=5500000 +tilt=45 +azi=0 |
 
+Clip raster  
+```
+# clip to extent of vector geometry and reproject
+file='hyp.tif'
+file_naturalearth='/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg'
+name='North America'
+extent=($(ogrinfo ${file_naturalearth} -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${name}')" | grep '=' | sed -e 's/^.*= //g'))
+gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs 'ESRI:102010' /vsistdin/ ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
 
-Georeference by extent.  
-```shell
-gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif
+# clip to vector geometry and reproject
+file='hyp.tif'
+file_naturalearth='/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg'
+name='INDIAN OCEAN'
+xy=($(ogrinfo ${file_naturalearth} -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
+gdalwarp -dstalpha -crop_to_cutline -cutline 'naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT geom FROM ne_110m_geography_marine_polys WHERE name = '${name}'" ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' /vsistdin/ ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
-Georeference by ground control points  
-```shell
-gdal_translate -gcp 0 0 -180 -90 -gcp 1024 512 180 90 -gcp 0 512 -180 90 -gcp 1024 0 180 -90 HYP_HR_SR_OB_DR_1024_512.png HYP_HR_SR_OB_DR_1024_512_georeferenced.tif
+Set prime meridian  
+```
+# for 0° to 360° raster
+file='topo15_4320.tif'
+pm=-360
+gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=longlat +ellps=WGS84 +pm=${pm} +datum=WGS84 +no_defs +lon_wrap=360 +over" ${file} ${file%.*}_${pm}pm.tif
 
-# raster-to-globe
-file=chicago.tif
-extent=($(gdalinfo ${file} | grep -E '^Lower Left|^Upper Right' | sed -e 's/Upper Left  (//g' -e 's/Lower Left  (//g' -e 's/Upper Right (//g' -e 's/Lower Right (//g' -e 's/) (.*$//g' -e 's/,//g'))
+# for -180° to 180° raster
+file='topo15_4320.tif'
+pm=180
+gdalwarp -overwrite -ts 1920 0 -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${pm}dE" ${file} ${file%.*}_${pm}pm.tif
+
+# assign prime meridian by place name from natural earth
+file='topo15_4320.tif'
+file_naturalearth='/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg'
+name='Toronto'
+pm=$(ogrinfo ${file_naturalearth} -sql "SELECT round(ST_X(ST_Shift_Longitude(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g')
+gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${pm}dE" ${file} ${file%.*}_${pm}pm.tif
+```
+
+### gdal_translate
+
+Converts raster data between different formats. Read the (docs)[https://gdal.org/programs/gdal_translate.html].  
+```
+gdal_translate [--help] [--help-general] [--long-usage]
+   [-ot {Byte/Int8/Int16/UInt16/UInt32/Int32/UInt64/Int64/Float32/Float64/
+         CInt16/CInt32/CFloat32/CFloat64}] [-strict]
+   [-if <format>]... [-of <format>]
+   [-b <band>] [-mask <band>] [-expand {gray|rgb|rgba}]
+   [-outsize <xsize>[%]|0 <ysize>[%]|0] [-tr <xres> <yres>]
+   [-ovr <level>|AUTO|AUTO-<n>|NONE]
+   [-r {nearest,bilinear,cubic,cubicspline,lanczos,average,mode}]
+   [-unscale] [-scale[_bn] [<src_min> <src_max> [<dst_min> <dst_max>]]]... [-exponent[_bn] <exp_val>]...
+   [-srcwin <xoff> <yoff> <xsize> <ysize>] [-epo] [-eco]
+   [-projwin <ulx> <uly> <lrx> <lry>] [-projwin_srs <srs_def>]
+   [-a_srs <srs_def>] [-a_coord_epoch <epoch>]
+   [-a_ullr <ulx> <uly> <lrx> <lry>] [-a_nodata <value>]
+   [-a_gt <gt0> <gt1> <gt2> <gt3> <gt4> <gt5>]
+   [-a_scale <value>] [-a_offset <value>]
+   [-nogcp] [-gcp <pixel> <line> <easting> <northing> [<elevation>]]...
+   |-colorinterp{_bn} {red|green|blue|alpha|gray|undefined}]
+   |-colorinterp {red|green|blue|alpha|gray|undefined},...]
+   [-mo <META-TAG>=<VALUE>]... [-dmo "DOMAIN:META-TAG=VALUE"]... [-q] [-sds]
+   [-co <NAME>=<VALUE>]... [-stats] [-norat] [-noxmp]
+   [-oo <NAME>=<VALUE>]...
+   <src_dataset> <dst_dataset>
+```
+
+Example:
+
+Georeference raster  
+```
+# to global extent
+file='HYP_HR_SR_OB_DR_1024_512.png'
+gdal_translate -a_ullr -180 90 180 -90 ${file} ${file%.*}_georeferenced.tif
+
+# to specified extent
+file=topo15_4320.tif
+extent=($(gdalinfo ${file} | grep -E '^Lower Left|^Upper Right' | sed -e 's/Upper Left  (//g' -e 's/Lower Left  (//g' -e 's/Upper Right (//g' -e 's/Lower Right (//g' -e 's/).*$//g' -e 's/,//g' | xargs))
 x_min=-180
 x_max=180
-y_min=0
+y_min=-90
 y_max=90
-
 gdal_translate -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} ${file} ${file%.*}_${x_min}_${x_max}_${y_min}_${y_max}.tif
+
+# using ground control points
+file='HYP_HR_SR_OB_DR_1024_512.png'
+gdal_translate -gcp 0 0 -180 -90 -gcp 1024 512 180 90 -gcp 0 512 -180 90 -gcp 1024 0 180 -90 ${file} ${file%.*}_georeferenced.tif
+
+# georeference and transform in one step
+file='HYP_HR_SR_OB_DR_1024_512.png'
+gdal_translate -a_ullr -180 90 180 -90 ${file} /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' /vsistdin/ ${file%.*}_crs.tif
 ```
 
-Georeference and transform in one step.  
-```shell
-gdal_translate -a_ullr -180 90 180 -90 HYP_HR_SR_OB_DR_1024_512.png /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' /vsistdin/ HYP_HR_SR_OB_DR_1024_512_crs.tif
+Clip raster using *gdal_translate* and reproject  
+```
+file='HYP_HR_SR_OB_DR_1024_512.png'
+gdal_translate -projwin -180 90 180 0 ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ ${file%.*}_clipped_reprojected.tif
 ```
 
-Clip raster to a bounding box using either *gdal_translate* or *gdalwarp*. Use the appropriate stereographic projection for each hemisphere.  
-```shell
-gdal_translate -projwin -180 90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ hyp_north_stere.tif
+### gdal_contour
 
-gdalwarp -te -180 -90 180 0 hyp.tif /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=-90 +lat_ts_0' /vsistdin/ hyp_south_stere.tif
+Builds vector contour lines from a raster elevation model. Read the (docs)[https://gdal.org/programs/gdal_contour.html].  
+```
+gdal_contour [--help] [--help-general]
+             [-b <band>] [-a <attribute_name>] [-amin <attribute_name>] [-amax <attribute_name>]
+             [-3d] [-inodata] [-snodata <n>] [-f <formatname>] [-i <interval>]
+             [-dsco <NAME>=<VALUE>]... [-lco <NAME>=<VALUE>]...
+             [-off <offset>] [-fl <level> <level>...] [-e <exp_base>]
+             [-nln <outlayername>] [-q] [-p]
+             <src_filename> <dst_filename>
 ```
 
-Clip raster to extent of vector geometries in the same way. Use North America Lambert Conformal Conic projection here.  
-```shell
-file='hyp.tif'
-continent='North America'
-extent=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${continent}')" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs 'ESRI:102010' /vsistdin/ ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
+Example:
+
+Make contours from topo  
 ```
-
-Clip to vector geometry with *crop_to_cutline*. The cutline is the extent of the Indian Ocean so we center the projection on its centroid here.  
-```shell
-file='hyp.tif'
-name='INDIAN OCEAN'
-xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -dstalpha -crop_to_cutline -cutline 'naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT Extent(geom) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' /vsistdin/ ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
-```
-
-Make contours from dem  
-```shell
-# lines
-file=/home/steve/maps/srtm/topo15.grd
-gdal_contour --config GDAL_CACHEMAX 500 -lco GEOMETRY=AS_WKT -f "CSV" -a elev -fl 500 ${file}
-gdal_contour --config GDAL_CACHEMAX 500 -f "GPKG" -a meters -i 100 /home/steve/maps/srtm/topo15_4000_40000.tif /home/steve/maps/srtm/topo15_4000_40000_100m.gpkg
-gdal_contour --config GDAL_CACHEMAX 500 -f "PostgreSQL" -a elev -i 10 ${file} PG:dbname=world topo15_4000_40000_10m
-
 # polygons
-gdal_contour -p -f "GPKG" -amin amin -amax amax -i 100 topo15_4320_ocean.tif topo15_4320_ocean_100m_polygon.gpkg
+file='/home/steve/maps/srtm/topo15.grd'
+interval=100
+gdal_contour -p -f "GPKG" -amin amin -amax amax -i ${interval} ${file} ${file%.*}_${interval}m_polygon.gpkg
 
-ogr2ogr -overwrite -f "SQLite" -dsco SPATIALITE=YES -lco OVERWRITE=YES -dialect sqlite -sql "SELECT elev, ST_MakePolygon(GEOMETRY) FROM topo15_43200 WHERE elev IN (-10000,-9000,-8000,-7000,-6000,-5000,-4000,-3000,-2000,-1000,-900,-800,-700,-600,-500,-400,-300,-200,-100,0,100,200,300,400,500,600,700,800,900,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500,6000,6500,7000,7500,8000);" /home/steve/maps/srtm/srtm15/topo15_43200_polygon.sqlite -t_srs "EPSG:4326" -nlt POLYGON -nln topo15_43200_polygon -explodecollections /home/steve/maps/srtm/srtm15/topo15_43200.sqlite
+# set interval
+file='/home/steve/maps/srtm/topo15.grd'
+interval=100
+gdal_contour --config GDAL_CACHEMAX 500 -f "GPKG" -a meters -i ${interval} ${file} ${file%.*}_${interval}m.gpkg
 
-# values
-ogr2ogr -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10
+# set interval and export to postgis
+file='/home/steve/maps/srtm/topo15.grd'
+interval=100
+gdal_contour --config GDAL_CACHEMAX 500 -f "PostgreSQL" -a elev -i 10 ${file} PG:dbname=world ${file%.*}_${interval}m
+
+# set level and export to csv
+file='/home/steve/maps/srtm/topo15.grd'
+level=500
+gdal_contour --config GDAL_CACHEMAX 500 -lco GEOMETRY=AS_WKT -f "CSV" -a elev -fl ${level} ${file} ${file%.*}_${level}m.csv
 ```
 
-Make terrain from dem  
-```shell
+### gdaldem
+
+Tools to analyze and visualize DEMs. Read the (docs)[https://gdal.org/programs/gdaldem.html].  
+
+Generate a shaded relief map  
+```
+gdaldem hillshade <input_dem> <output_hillshade>
+            [-z <zfactor>] [-s <scale>]
+            [-az <azimuth>] [-alt <altitude>]
+            [-alg ZevenbergenThorne] [-combined | -multidirectional | -igor]
+            [-compute_edges] [-b <Band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
+```
+
+Generate a slope map  
+```
+gdaldem slope <input_dem> <output_slope_map>
+            [-p] [-s <scale>]
+            [-alg ZevenbergenThorne]
+            [-compute_edges] [-b <band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
+```
+
+Example:
+
+```
+gdaldem slope -compute_edges -s 111120 /home/steve/maps/srtm/topo15_43200.tif /home/steve/maps/srtm/topo15_43200_tmp.tif
+```
+
+```
+file='/home/steve/maps/srtm/topo15.grd'
 gdaldem aspect -compute_edges /home/steve/maps/srtm/topo15_1000_10000.tif /home/steve/maps/srtm/topo15_1000_10000_aspect.tif
 
-gdaldem slope -compute_edges -s 111120 /home/steve/maps/srtm/topo15_43200.tif /home/steve/maps/srtm/topo15_43200_tmp.tif
 
 gdaldem roughness -compute_edges /home/steve/Projects/maps/srtm/N43W080_wgs84.tif /home/steve/maps/srtm/N43W080_wgs84_roughness.tif
 
@@ -365,6 +501,13 @@ ogrinfo -so -sql "SELECT Extent(ST_Buffer(geom,${buffer})) FROM ${layer} WHERE n
 ogrinfo -update -sql 'ALTER TABLE lines ADD COLUMN x double; UPDATE lines SET x = ST_X(ST_Centroid(geom))' Bangkok.osm_gcp.gpkg
 ogrinfo -update -sql 'ALTER TABLE lines ADD COLUMN y double; UPDATE lines SET y = ST_Y(ST_Centroid(geom))' Bangkok.osm_gcp.gpkg
 ```
+
+# contours with levels
+ogr2ogr -overwrite -f "SQLite" -dsco SPATIALITE=YES -lco OVERWRITE=YES -dialect sqlite -sql "SELECT elev, ST_MakePolygon(GEOMETRY) FROM topo15_43200 WHERE elev IN (-10000,-9000,-8000,-7000,-6000,-5000,-4000,-3000,-2000,-1000,-900,-800,-700,-600,-500,-400,-300,-200,-100,0,100,200,300,400,500,600,700,800,900,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500,6000,6500,7000,7500,8000);" /home/steve/maps/srtm/srtm15/topo15_43200_polygon.sqlite -t_srs "EPSG:4326" -nlt POLYGON -nln topo15_43200_polygon -explodecollections /home/steve/maps/srtm/srtm15/topo15_43200.sqlite
+
+# contours with m values
+ogr2ogr -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10
+
 
 Export with *ogrinfo*
 ```shell
