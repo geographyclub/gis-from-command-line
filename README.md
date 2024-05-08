@@ -23,7 +23,7 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 
 ### gdalinfo
 
-Lists information about a raster dataset. Read the [docs]([https://gdal.org/programs/gdalinfo.html).  
+Lists information about a raster dataset. Read the [docs](https://gdal.org/programs/gdalinfo.html).  
 ```
 gdalinfo [--help] [--help-general]
          [-json] [-mm] [-stats | -approx_stats] [-hist]
@@ -34,7 +34,7 @@ gdalinfo [--help] [--help-general]
          <datasetname>
 ```
 
-Example:
+**Example:**
 
 Print histogram  
 ```
@@ -81,13 +81,13 @@ Advanced options:
          [-if <format>]... [-srcband <band>]... [-dstband <band>]...
 ```
 
-Example:
+**Example:**
 
 Resize raster  
 ```
 # assign new width and keep aspect ratio
-file='HYP_HR_SR_OB_DR.tif'
-width=1920
+file='topo15.grd'
+width=4320
 gdalwarp -overwrite -ts ${width} 0 -r cubicspline ${file} ${file%.*}_${width}.tif
 
 # assign new resolution
@@ -206,7 +206,7 @@ gdal_translate [--help] [--help-general] [--long-usage]
    <src_dataset> <dst_dataset>
 ```
 
-Example:
+****Example:****
 
 Georeference raster  
 ```
@@ -251,7 +251,7 @@ gdal_contour [--help] [--help-general]
              <src_filename> <dst_filename>
 ```
 
-Example:
+**Example:**
 
 Make contours from topo  
 ```
@@ -280,7 +280,7 @@ gdal_contour --config GDAL_CACHEMAX 500 -lco GEOMETRY=AS_WKT -f "CSV" -a elev -f
 
 Tools to analyze and visualize DEMs. Read the [docs](https://gdal.org/programs/gdaldem.html).  
 
-Generate a shaded relief map  
+Generate a shaded relief map:  
 ```
 gdaldem hillshade <input_dem> <output_hillshade>
             [-z <zfactor>] [-s <scale>]
@@ -289,7 +289,28 @@ gdaldem hillshade <input_dem> <output_hillshade>
             [-compute_edges] [-b <Band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
 ```
 
-Generate a slope map  
+**Example:**
+
+```
+file='topo15_4320.tif'
+zfactor=100
+azimuth=315
+altitude=45
+gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges ${file} ${file%.*}_hillshade.tif
+```
+
+Loop hillshade:  
+```
+file='topo15_4320.tif'
+for a in $(seq 0 10 90); do
+  zfactor=100
+  azimuth=315
+  altitude=${a}
+  gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges ${file} ${file%.*}_altitude${a}.tif
+done
+```
+
+Generate a slope map:  
 ```
 gdaldem slope <input_dem> <output_slope_map>
             [-p] [-s <scale>]
@@ -297,51 +318,86 @@ gdaldem slope <input_dem> <output_slope_map>
             [-compute_edges] [-b <band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
 ```
 
-Example:
+**Example:**
 
 ```
-gdaldem slope -compute_edges -s 111120 /home/steve/maps/srtm/topo15_43200.tif /home/steve/maps/srtm/topo15_43200_tmp.tif
+file='/home/steve/maps/srtm/topo15_43200.tif'
+gdaldem slope -compute_edges -s 111120 ${file} ${file%.*}_slope.tif
 ```
+
+Generate an aspect map, outputs a 32-bit float raster with pixel values from 0-360 indicating azimuth:  
+```
+gdaldem aspect <input_dem> <output_aspect_map>
+            [-trigonometric] [-zero_for_flat]
+            [-alg ZevenbergenThorne]
+            [-compute_edges] [-b <band>] [-of format] [-co <NAME>=<VALUE>]... [-q]
+```
+
+**Example:**
 
 ```
 file='/home/steve/maps/srtm/topo15.grd'
-gdaldem aspect -compute_edges /home/steve/maps/srtm/topo15_1000_10000.tif /home/steve/maps/srtm/topo15_1000_10000_aspect.tif
-
-
-gdaldem roughness -compute_edges /home/steve/Projects/maps/srtm/N43W080_wgs84.tif /home/steve/maps/srtm/N43W080_wgs84_roughness.tif
-
-gdaldem TRI -compute_edges /home/steve/Projects/maps/dem/srtm/N43W080_wgs84.tif /home/steve/Projects/maps/dem/srtm/N43W080_wgs84_tri.tif
-
-gdaldem TPI -compute_edges /home/steve/Projects/maps/dem/srtm/N43W080_wgs84.tif /home/steve/Projects/maps/dem/srtm/N43W080_wgs84_tpi.tif
-
-gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' tcdc.tif "white-black.txt" /vsistdout/ | gdalwarp -overwrite -dstalpha -f 'GTiff' -of 'GTiff' -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -ts 500 250 /vsistdin/ tcdc_color.tif
+gdaldem aspect -compute_edges ${file} ${file%.*}_aspect.tif
 ```
 
-Loop terrain rasters    
-```shell
-zfactor=100
-azimuth=315
-altitude=45
-gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo.tif topo_hillshade.tif
-
-# loop zfactor
-rm -f topo15_4320_hillshade_zfactor*
-for a in $(seq 1 100 1000); do
-  zfactor=${a}
-  azimuth=315
-  altitude=45
-  gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo15_4320.tif topo15_4320_hillshade_zfactor${zfactor}.tif
-done
-
-# loop azimuth
-rm -f topo15_4320_hillshade_azimuth*
-for a in $(seq 0 10 350); do
-  zfactor=1000
-  azimuth=${a}
-  altitude=10
-  gdaldem hillshade -combined -z ${zfactor} -s 111120 -az ${azimuth} -alt ${altitude} -compute_edges topo15_4320.tif topo15_4320_hillshade_azimuth${a}.tif
-done
+Generate a color relief map:  
 ```
+gdaldem color-relief <input_dem> <color_text_file> <output_color_relief_map>
+             [-alpha] [-exact_color_entry | -nearest_color_entry]
+             [-b <band>] [-of format] [-co <NAME>=<VALUE>]... [-q]
+
+where color_text_file contains lines of the format "elevation_value red green blue"
+```
+
+**Example:**
+
+```
+# requires color file, eg. white-black.txt
+file='/home/steve/Projects/maps/srtm/N43W080_wgs84.tif'
+gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' ${file} "white-black.txt" /vsistdout/ | gdalwarp -overwrite -dstalpha -f 'GTiff' -of 'GTiff' -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -ts 500 250 /vsistdin/ ${file%.*}_color.tif
+```
+
+Generate a Terrain Ruggedness Index (TRI) map:  
+```
+gdaldem TRI input_dem output_TRI_map
+            [-alg Wilson|Riley]
+            [-compute_edges] [-b Band (default=1)] [-of format] [-q]
+```
+
+**Example:**
+
+```
+file='/home/steve/Projects/maps/dem/srtm/N43W080_wgs84.tif'
+gdaldem TRI -compute_edges ${file} ${file%.*}_tri.tif
+```
+
+Generate a Topographic Position Index (TPI) map:  
+```
+gdaldem TPI <input_dem> <output_TPI_map>
+            [-compute_edges] [-b <band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
+```
+
+**Example:**
+
+```
+file='/home/steve/Projects/maps/dem/srtm/N43W080_wgs84.tif'
+gdaldem TPI -compute_edges ${file} ${file%.*}._tpi.tif
+```
+
+Generate a roughness map:  
+```
+gdaldem roughness <input_dem> <output_roughness_map>
+            [-compute_edges] [-b <band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
+```
+
+**Example:**
+
+```
+file='/home/steve/Projects/maps/srtm/N43W080_wgs84.tif'
+gdaldem roughness -compute_edges ${file} ${file%.*}_roughness.tif
+```
+
+
 
 Polygonize raster
 ```shell
