@@ -23,7 +23,8 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 
 ### gdalinfo
 
-Lists information about a raster dataset. Read the [docs](https://gdal.org/programs/gdalinfo.html).  
+Lists information about a raster dataset. Read the [docs](https://gdal.org/programs/gdalinfo.html).
+
 ```
 gdalinfo [--help] [--help-general]
          [-json] [-mm] [-stats | -approx_stats] [-hist]
@@ -36,19 +37,19 @@ gdalinfo [--help] [--help-general]
 
 **Example:**
 
-Print histogram  
+Print histogram:  
 ```
 file='topo15_4320.tif'
 gdalinfo -hist ${file} | grep -A1 'buckets from' | tail -1 | xargs
 ```
 
-Print width and height  
+Print width and height:  
 ```
 file='topo15_4320.tif'
 gdalinfo ${file} | grep "Size is" | sed 's/Size is //g' | sed 's/, / /g'
 ```
 
-Print extent  
+Print extent:  
 ```
 file='topo15_4320.tif'
 gdalinfo ${file} | grep -E '^Lower Left|^Upper Right' | sed -e 's/Upper Left  (//g' -e 's/Lower Left  (//g' -e 's/Upper Right (//g' -e 's/Lower Right (//g' -e 's/).*$//g' -e 's/,//g' | xargs
@@ -56,7 +57,8 @@ gdalinfo ${file} | grep -E '^Lower Left|^Upper Right' | sed -e 's/Upper Left  (/
 
 ### gdalwarp
 
-Image reprojection and warping utility. Read the [docs](https://gdal.org/programs/gdalwarp.html).  
+Image reprojection and warping utility. Read the [docs](https://gdal.org/programs/gdalwarp.html).
+
 ```
 gdalwarp [--help] [--long-usage] [--help-general]
          [--quiet] [-overwrite] [-of <output_format>] [-co <NAME>=<VALUE>]... [-s_srs <srs_def>]
@@ -83,7 +85,7 @@ Advanced options:
 
 **Example:**
 
-Resize raster  
+Resize raster:  
 ```
 # assign new width and keep aspect ratio
 file='topo15.grd'
@@ -103,7 +105,7 @@ new_width=$(echo $(gdalinfo ${file}| grep "Size is" | sed 's/Size is //g' | sed 
 gdalwarp -overwrite -ts ${new_width} 0 -r cubicspline ${file} ${file%.*}_${new_width}.tif
 ```
 
-Reproject raster  
+Reproject raster:  
 ```
 # with epsg code, setting extent between -85° and 80° latitude for web mercator
 file='hyp.tif'
@@ -141,7 +143,7 @@ Some popular map projections and their PROJ definitions. Read the [docs](https:/
 | Near perspective | +proj=nsper +h=300000 +lat_0=14 +lon_0=101 |
 | Tilted Perspective | +proj=tpers +lat_0=40 +lon_0=0 +h=5500000 +tilt=45 +azi=0 |
 
-Clip raster  
+Clip raster:  
 ```
 # clip to extent of vector geometry and reproject
 file='hyp.tif'
@@ -158,7 +160,7 @@ xy=($(ogrinfo ${file_naturalearth} -sql "SELECT round(ST_X(ST_Centroid(geom))), 
 gdalwarp -dstalpha -crop_to_cutline -cutline 'naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT geom FROM ne_110m_geography_marine_polys WHERE name = '${name}'" ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' /vsistdin/ ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
-Set prime meridian  
+Set prime meridian:  
 ```
 # for 0° to 360° raster
 file='topo15_4320.tif'
@@ -178,9 +180,15 @@ pm=$(ogrinfo ${file_naturalearth} -sql "SELECT round(ST_X(ST_Shift_Longitude(geo
 gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs "+proj=latlong +datum=WGS84 +pm=${pm}dE" ${file} ${file%.*}_${pm}pm.tif
 ```
 
+Use *gdalwarp* to convert from GeoTIFF to regular TIFF (use with programs like imagemagick):  
+```
+gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -ts 1920 0 -f 'GTiff' -of 'GTiff' hyp.tif hyp_nogeo.tif
+```
+
 ### gdal_translate
 
-Converts raster data between different formats. Read the [docs](https://gdal.org/programs/gdal_translate.html).  
+Converts raster data between different formats. Read the [docs](https://gdal.org/programs/gdal_translate.html).
+
 ```
 gdal_translate [--help] [--help-general] [--long-usage]
    [-ot {Byte/Int8/Int16/UInt16/UInt32/Int32/UInt64/Int64/Float32/Float64/
@@ -208,7 +216,7 @@ gdal_translate [--help] [--help-general] [--long-usage]
 
 ****Example:****
 
-Georeference raster  
+Georeference raster:  
 ```
 # to global extent
 file='HYP_HR_SR_OB_DR_1024_512.png'
@@ -232,7 +240,7 @@ file='HYP_HR_SR_OB_DR_1024_512.png'
 gdal_translate -a_ullr -180 90 180 -90 ${file} /vsistdout/ | gdalwarp -overwrite -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' /vsistdin/ ${file%.*}_crs.tif
 ```
 
-Clip raster using *gdal_translate* and reproject  
+Clip raster using *gdal_translate* and reproject:  
 ```
 file='HYP_HR_SR_OB_DR_1024_512.png'
 gdal_translate -projwin -180 90 180 0 ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ ${file%.*}_clipped_reprojected.tif
@@ -240,7 +248,8 @@ gdal_translate -projwin -180 90 180 0 ${file} /vsistdout/ | gdalwarp -overwrite 
 
 ### gdal_contour
 
-Builds vector contour lines from a raster elevation model. Read the [docs](https://gdal.org/programs/gdal_contour.html).  
+Builds vector contour lines from a raster elevation model. Read the [docs](https://gdal.org/programs/gdal_contour.html).
+
 ```
 gdal_contour [--help] [--help-general]
              [-b <band>] [-a <attribute_name>] [-amin <attribute_name>] [-amax <attribute_name>]
@@ -253,7 +262,7 @@ gdal_contour [--help] [--help-general]
 
 **Example:**
 
-Make contours from topo  
+Make contours from topo:  
 ```
 # polygons
 file='/home/steve/maps/srtm/topo15.grd'
@@ -280,7 +289,8 @@ gdal_contour --config GDAL_CACHEMAX 500 -lco GEOMETRY=AS_WKT -f "CSV" -a elev -f
 
 Tools to analyze and visualize DEMs. Read the [docs](https://gdal.org/programs/gdaldem.html).  
 
-Generate a shaded relief map:  
+Generate a shaded relief map.
+
 ```
 gdaldem hillshade <input_dem> <output_hillshade>
             [-z <zfactor>] [-s <scale>]
@@ -310,7 +320,8 @@ for a in $(seq 0 10 90); do
 done
 ```
 
-Generate a slope map:  
+Generate a slope map.
+  
 ```
 gdaldem slope <input_dem> <output_slope_map>
             [-p] [-s <scale>]
@@ -325,7 +336,8 @@ file='/home/steve/maps/srtm/topo15_43200.tif'
 gdaldem slope -compute_edges -s 111120 ${file} ${file%.*}_slope.tif
 ```
 
-Generate an aspect map, outputs a 32-bit float raster with pixel values from 0-360 indicating azimuth:  
+Generate an aspect map, outputs a 32-bit float raster with pixel values from 0-360 indicating azimuth.
+
 ```
 gdaldem aspect <input_dem> <output_aspect_map>
             [-trigonometric] [-zero_for_flat]
@@ -340,7 +352,8 @@ file='/home/steve/maps/srtm/topo15.grd'
 gdaldem aspect -compute_edges ${file} ${file%.*}_aspect.tif
 ```
 
-Generate a color relief map:  
+Generate a color relief map.
+
 ```
 gdaldem color-relief <input_dem> <color_text_file> <output_color_relief_map>
              [-alpha] [-exact_color_entry | -nearest_color_entry]
@@ -357,7 +370,8 @@ file='/home/steve/Projects/maps/srtm/N43W080_wgs84.tif'
 gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' ${file} "white-black.txt" /vsistdout/ | gdalwarp -overwrite -dstalpha -f 'GTiff' -of 'GTiff' -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -ts 500 250 /vsistdin/ ${file%.*}_color.tif
 ```
 
-Generate a Terrain Ruggedness Index (TRI) map:  
+Generate a Terrain Ruggedness Index (TRI) map.
+
 ```
 gdaldem TRI input_dem output_TRI_map
             [-alg Wilson|Riley]
@@ -371,7 +385,8 @@ file='/home/steve/Projects/maps/dem/srtm/N43W080_wgs84.tif'
 gdaldem TRI -compute_edges ${file} ${file%.*}_tri.tif
 ```
 
-Generate a Topographic Position Index (TPI) map:  
+Generate a Topographic Position Index (TPI) map.
+
 ```
 gdaldem TPI <input_dem> <output_TPI_map>
             [-compute_edges] [-b <band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
@@ -384,7 +399,8 @@ file='/home/steve/Projects/maps/dem/srtm/N43W080_wgs84.tif'
 gdaldem TPI -compute_edges ${file} ${file%.*}._tpi.tif
 ```
 
-Generate a roughness map:  
+Generate a roughness map.
+
 ```
 gdaldem roughness <input_dem> <output_roughness_map>
             [-compute_edges] [-b <band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
@@ -397,18 +413,38 @@ file='/home/steve/Projects/maps/srtm/N43W080_wgs84.tif'
 gdaldem roughness -compute_edges ${file} ${file%.*}_roughness.tif
 ```
 
+### gdal_polygonize.py
 
-
-Polygonize raster
-```shell
-# hillshade mask
-gdaldem hillshade -z 1 -az 315 -alt 45 topo15_4320.tif topo15_4320_hillshade.tif
-gdal_calc.py --overwrite --NoDataValue=0 -A topo15_4320_hillshade.tif --calc="A*(A<=1)" --out=topo15_4320_hillshade_mask.tif
-gdal_polygonize.py topo15_4320_hillshade_mask.tif topo15_4320_hillshade_mask.gpkg hillshade_mask
+Produces a polygon feature layer from a raster. Read the [docs](https://gdal.org/programs/gdal_polygonize.html).  
 
 ```
+gdal_polygonize.py [--help] [--help-general]
+                   [-8] [-o <name>=<value>]... [-nomask]
+                   [-mask <filename>] <raster_file> [-b <band>]
+                   [-q] [-f <ogr_format>] [-lco <name>=<value>]...
+                   [-overwrite] <out_file> [<layer>] [<fieldname>]
+```
 
-Multiply Natural Earth and shaded relief rasters, then take a closer look at the Himalayas.  
+**Example:**
+
+```shell
+file='topo15_4320_hillshade_mask.tif'
+gdal_polygonize.py ${file} ${file%.*}.gpkg ${file%.*}
+```
+
+### gdal_calc.py
+
+Command line raster calculator with numpy syntax. Read the [docs](https://gdal.org/programs/gdal_calc.html).
+
+```
+gdal_calc.py [--help] [--help-general]
+             --calc=expression --outfile=<out_filename> [-A <filename>]
+             [--A_band=<n>] [-B...-Z <filename>] [<other_options>]
+```
+
+**Example:**
+
+Multiply Natural Earth and shaded relief rasters, then take a closer look at the Himalayas:  
 ```shell
 gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"
 
@@ -418,10 +454,6 @@ xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round
 gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
-Use *gdalwarp* to convert from GeoTIFF to regular TIFF (use with programs like imagemagick).  
-```shell
-gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -ts 1920 0 -f 'GTiff' -of 'GTiff' hyp.tif hyp_nogeo.tif
-```
 
 Use *gdal_translate* to convert from GeoTIFF to JPEG, PNG and other image formats. Use *outsize* to set width and maintain aspect ratio of output image.  
 ```shell
