@@ -152,12 +152,18 @@ name='North America'
 extent=($(ogrinfo ${file_naturalearth} -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${name}')" | grep '=' | sed -e 's/^.*= //g'))
 gdalwarp -te ${extent[*]} ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs 'ESRI:102010' /vsistdin/ ${file%.*}_extent_$(echo "${extent[@]}" | sed 's/ /_/g').tif
 
-# clip to vector geometry and reproject
+# clip to indian ocean and reproject
 file='hyp.tif'
 file_naturalearth='/home/steve/maps/naturalearth/packages/natural_earth_vector.gpkg'
 name='INDIAN OCEAN'
 xy=($(ogrinfo ${file_naturalearth} -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_marine_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
 gdalwarp -dstalpha -crop_to_cutline -cutline 'naturalearth/packages/natural_earth_vector.gpkg' -csql "SELECT geom FROM ne_110m_geography_marine_polys WHERE name = '${name}'" ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' /vsistdin/ ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
+
+# clip to himalayas and reproject
+file='hyp_hillshade.tif'
+name='HIMALAYAS'
+xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_regions_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
+gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
 Set prime meridian:  
@@ -244,6 +250,21 @@ Clip raster using *gdal_translate* and reproject:
 ```
 file='HYP_HR_SR_OB_DR_1024_512.png'
 gdal_translate -projwin -180 90 180 0 ${file} /vsistdout/ | gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=stere +lat_0=90 +lat_ts_0' /vsistdin/ ${file%.*}_clipped_reprojected.tif
+```
+
+Resize and convert all tifs in the folder to JPEG2000:  
+```shell
+# without metadata
+width=1920
+ls *.tif | while read file; do
+  gdal_translate -ot Int16 -of 'JP2OpenJPEG' -outsize ${width} 0 ${file} ${file%.*}.jp2
+done
+
+# with metadata
+width=1920
+ls *.tif | while read file; do
+  gdal_translate -ot Int16 -of 'JP2OpenJPEG' -mo "ATTRIBUTION_LICENSE=CC BY-SA 4.0" -outsize 1920 0 ${file} ${file%.*}.jp2
+done
 ```
 
 ### gdal_contour
@@ -364,8 +385,8 @@ where color_text_file contains lines of the format "elevation_value red green bl
 
 **Example:**
 
+Color DEM with color file, eg. white-black.txt:  
 ```
-# requires color file, eg. white-black.txt
 file='/home/steve/Projects/maps/srtm/N43W080_wgs84.tif'
 gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' ${file} "white-black.txt" /vsistdout/ | gdalwarp -overwrite -dstalpha -f 'GTiff' -of 'GTiff' -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -ts 500 250 /vsistdin/ ${file%.*}_color.tif
 ```
@@ -408,6 +429,7 @@ gdaldem roughness <input_dem> <output_roughness_map>
 
 **Example:**
 
+Compute roughness index on SRTM3 tile:  
 ```
 file='/home/steve/Projects/maps/srtm/N43W080_wgs84.tif'
 gdaldem roughness -compute_edges ${file} ${file%.*}_roughness.tif
@@ -444,33 +466,13 @@ gdal_calc.py [--help] [--help-general]
 
 **Example:**
 
-Multiply Natural Earth and shaded relief rasters, then take a closer look at the Himalayas:  
-```shell
+Multiply Natural Earth with shaded relief rasters:  
+```
 gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"
-
-file='hyp_hillshade.tif'
-name='HIMALAYAS'
-xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_geography_regions_polys WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-gdalwarp -overwrite -dstalpha --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -ts 1920 0 -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${file} ${file%.*}_ortho_"${xy[0]}"_"${xy[1]}".tif
 ```
 
-
-Use *gdal_translate* to convert from GeoTIFF to JPEG, PNG and other image formats. Use *outsize* to set width and maintain aspect ratio of output image.  
-```shell
-gdal_translate -outsize 1920 0 -if 'GTiff' -of 'JPEG' hyp.tif hyp.png
-
-gdal_translate -outsize 1920 0 -if 'GTiff' -of 'PNG' hyp.tif hyp.png
+Raster math with *gdal_calc*:  
 ```
-
-Resize and convert all geotiffs in the folder to png.  
-```shell
-ls *.tif | while read file; do
-  gdal_translate -of 'PNG' -outsize 1920 0 ${file} ${file%.*}.png
-done
-```
-
-Raster math with *gdal_calc*.  
-```shell
 # empty raster
 gdal_calc.py --overwrite -A N43W080_3857.tif --outfile="empty.tif" --calc="0"
 
