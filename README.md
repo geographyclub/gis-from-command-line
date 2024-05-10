@@ -8,6 +8,11 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 1. [GDAL](#GDAL)  
    • gdalinfo
    • gdalwarp
+   • gdal_translate
+   • gdal_contour
+   • gdaldem
+   • gdal_polygonize.py
+   • gdal_calc.py   
 2. [OGR](#OGR)  
 3. [SAGA-GIS](#saga-gis)   
 4. [Dataset examples](#dataset-examples)  
@@ -310,6 +315,8 @@ gdal_contour --config GDAL_CACHEMAX 500 -lco GEOMETRY=AS_WKT -f "CSV" -a elev -f
 
 Tools to analyze and visualize DEMs. Read the [docs](https://gdal.org/programs/gdaldem.html).  
 
+### gdaldem hillshade
+
 Generate a shaded relief map.
 
 ```
@@ -341,6 +348,8 @@ for a in $(seq 0 10 90); do
 done
 ```
 
+### gdaldem slope
+
 Generate a slope map.
   
 ```
@@ -357,6 +366,8 @@ file='/home/steve/maps/srtm/topo15_43200.tif'
 gdaldem slope -compute_edges -s 111120 ${file} ${file%.*}_slope.tif
 ```
 
+### gdaldem aspect
+
 Generate an aspect map, outputs a 32-bit float raster with pixel values from 0-360 indicating azimuth.
 
 ```
@@ -372,6 +383,8 @@ gdaldem aspect <input_dem> <output_aspect_map>
 file='/home/steve/maps/srtm/topo15.grd'
 gdaldem aspect -compute_edges ${file} ${file%.*}_aspect.tif
 ```
+
+### gdaldem color-relief
 
 Generate a color relief map.
 
@@ -391,50 +404,6 @@ file='/home/steve/Projects/maps/srtm/N43W080_wgs84.tif'
 gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' ${file} "white-black.txt" /vsistdout/ | gdalwarp -overwrite -dstalpha -f 'GTiff' -of 'GTiff' -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -ts 500 250 /vsistdin/ ${file%.*}_color.tif
 ```
 
-Generate a Terrain Ruggedness Index (TRI) map.
-
-```
-gdaldem TRI input_dem output_TRI_map
-            [-alg Wilson|Riley]
-            [-compute_edges] [-b Band (default=1)] [-of format] [-q]
-```
-
-**Example:**
-
-```
-file='/home/steve/Projects/maps/dem/srtm/N43W080_wgs84.tif'
-gdaldem TRI -compute_edges ${file} ${file%.*}_tri.tif
-```
-
-Generate a Topographic Position Index (TPI) map.
-
-```
-gdaldem TPI <input_dem> <output_TPI_map>
-            [-compute_edges] [-b <band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
-```
-
-**Example:**
-
-```
-file='/home/steve/Projects/maps/dem/srtm/N43W080_wgs84.tif'
-gdaldem TPI -compute_edges ${file} ${file%.*}._tpi.tif
-```
-
-Generate a roughness map.
-
-```
-gdaldem roughness <input_dem> <output_roughness_map>
-            [-compute_edges] [-b <band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
-```
-
-**Example:**
-
-Compute roughness index on SRTM3 tile:  
-```
-file='/home/steve/Projects/maps/srtm/N43W080_wgs84.tif'
-gdaldem roughness -compute_edges ${file} ${file%.*}_roughness.tif
-```
-
 ### gdal_polygonize.py
 
 Produces a polygon feature layer from a raster. Read the [docs](https://gdal.org/programs/gdal_polygonize.html).  
@@ -449,7 +418,7 @@ gdal_polygonize.py [--help] [--help-general]
 
 **Example:**
 
-```shell
+```
 file='topo15_4320_hillshade_mask.tif'
 gdal_polygonize.py ${file} ${file%.*}.gpkg ${file%.*}
 ```
@@ -466,21 +435,16 @@ gdal_calc.py [--help] [--help-general]
 
 **Example:**
 
-Multiply Natural Earth with shaded relief rasters:  
-```
-gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"
-```
-
 Raster math with *gdal_calc*:  
 ```
-# empty raster
+# create empty raster
 gdal_calc.py --overwrite -A N43W080_3857.tif --outfile="empty.tif" --calc="0"
 
-# adding
+# add rasters
 gdal_calc.py --overwrite -A ${dem%_wgs84.tif}_3857.tif -B ${city}/${city}_buildings.tif --outfile="${city}/${city}_dembuildings.tif" --calc="((A>=0)*A)+((A<0)*A*-0.1)+(B*20)"
 gdal_calc.py --overwrite -A N43W080_3857.tif -B buildings.tif --outfile="N43W080_3857_buildings.tif" --calc="A+(B*20)"
 
-# slicing
+# slice raster
 gdal_calc.py --overwrite --NoDataValue=0 -A topo15_43200_slope.tif --outfile topo15_43200_slope1.tif --calc="A*(A>=1)"
 gdal_calc.py -A input.tif --outfile=result.tif --calc="A*logical_and(A>100,A<150)"
 # slicing with a loop
@@ -488,17 +452,17 @@ for a in $(seq 1 100 5000); do
   gdal_calc.py --NoDataValue=0 -A ${dem} --outfile ${dir}/$(basename ${dem%.*}_${a}.tif) --calc="0*(A<0)" --calc="${a}*(A>=${a})"
 done
 
-# rounding
+# round values
 gdal_calc.py --overwrite -A topo15_43200.tif --outfile topo15_43200_rounded1000.tif --type 'Int16' --calc="A*0.001"
 
-# mask
+# create raster mask
 gdal_calc.py -A worldclim/wc2.0_bio_30s_15.tif --outfile=wc2.0_bio_30s_15_mask.tif --overwrite --type=Int16 --NoDataValue=0 --calc="1*(A>0)"
 gdal_calc.py -A topo15_43200_tmp.tif -B worldclim/wc2.0_bio_30s_15_mask.tif --outfile=topo15_43200_slope.tif --overwrite --type=Float32 --NoDataValue=0 --co=TILED=YES --co=COMPRESS=LZW --calc="A*(B>0)"
 
-# binary
+# create binary raster
 gdal_calc.py -A topo15_004_0004_lev01_hillshade.tif --outfile=topo15_004_0004_hillshade_binary.tif --overwrite --type=Int16 --calc="1*(A<2)"
 
-# binary (null)
+# create binary raster (null)
 gdal_calc.py -A topo15_004_0004_lev01_hillshade.tif --outfile=topo15_004_0004_hillshade_mask.tif --overwrite --type=Int16 --NoDataValue=0 --calc="1*(A<2)"
 
 # misc
@@ -506,8 +470,36 @@ gdal_calc.py --overwrite -A topo15_down.tif --outfile dem.tif --NoDataValue=0 --
 gdal_calc.py --overwrite -A temp.nc -B dem.tif --outfile temp_calc.tif --calc="trunc(A/${denominator})*(B==1)"
 ```
 
-Make grid from points using VRT and gdal_grid.  
-```shell
+Multiply Natural Earth with shaded relief rasters:  
+```
+gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile=hyp_hillshade.tif --calc="((A - numpy.min(A)) / (numpy.max(A) - numpy.min(A))) * B"
+```
+
+### gdal_grid
+
+Creates regular grid from the scattered data.
+
+```
+gdal_grid [--help] [--help-general]
+          [-ot {Byte/Int16/UInt16/UInt32/Int32/Float32/Float64/
+          CInt16/CInt32/CFloat32/CFloat64}]
+          [-oo <NAME>=<VALUE>]...
+          [-of <format>] [-co <NAME>=<VALUE>]...
+          [-zfield <field_name>] [-z_increase <increase_value>] [-z_multiply <multiply_value>]
+          [-a_srs <srs_def>] [-spat <xmin> <ymin> <xmax> <ymax>]
+          [-clipsrc <xmin> <ymin> <xmax> <ymax>|<WKT>|<datasource>|spat_extent]
+          [-clipsrcsql <sql_statement>] [-clipsrclayer <layer>]
+          [-clipsrcwhere <expression>]
+          [-l <layername>]... [-where <expression>] [-sql <select_statement>]
+          [-txe <xmin> <xmax>] [-tye <ymin> <ymax>] [-tr <xres> <yres>] [-outsize <xsize> <ysize>]
+          [-a {<algorithm>[[:<parameter1>=<value1>]...]}] [-q]
+          <src_datasource> <dst_filename>
+```
+
+**Example:**
+
+Make grid from points using VRT and gdal_grid:  
+```
 cat > metar.vrt <<- EOM
 <OGRVRTDataSource>
   <OGRVRTLayer name='metar'>
@@ -525,8 +517,23 @@ EOM
 gdal_grid -of netCDF -co WRITE_BOTTOMUP=NO -zfield "temp" -a invdist -txe -180 180 -tye -90 90 -outsize ${width} $(( width/2 )) -ot Float64 -l $(basename "${file%.*}") ${file%.*}.vrt temp.nc
 ```
 
-Sample weather grid at places using *gdallocationinfo*  
-```shell
+### gdallocationinfo
+
+Raster query tool.
+
+```
+Usage: gdallocationinfo [--help] [--help-general]
+                        [-xml] [-lifonly] [-valonly]
+                        [-E] [-field_sep <sep>] [-ignore_extra_input]
+                        [-b <band>]... [-overview <overview_level>]
+                        [[-l_srs <srs_def>] | [-geoloc] | [-wgs84]]
+                        [-oo <NAME>=<VALUE>]... <srcfile> [<x> <y>]
+```
+
+**Example:**
+
+Sample weather grid at places using *gdallocationinfo*:  
+```
 echo "scalerank,name,lat,lon,rownum,temp" > ${file%.*}_places.csv
 cat /home/steve/Projects/maps/places.csv | while read line; do
   coord=`echo "$line" | awk -F '\t' '{print $23,$22}'`
@@ -534,6 +541,7 @@ cat /home/steve/Projects/maps/places.csv | while read line; do
   echo -e "$line""\t""$temp" | awk -F '\t' '{print $1,$9,$22,$23,$38,$39}' OFS=',' >> ${file%.*}_places.csv
 done
 ```
+
 
 Get raster extents and import into postgis  
 ```shell
