@@ -12,10 +12,16 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
    • gdal_contour
    • gdaldem
    • gdal_polygonize.py
-   • gdal_calc.py   
-2. [OGR](#OGR)  
+   • gdal_rasterize
+   • gdal_calc.py
+   • gdal_grid
+   • gdallocationinfo
+2. [OGR](#OGR)
+   • ogrinfo
+   • ogr2ogr
+   • ogrmerge.py
 3. [SAGA-GIS](#saga-gis)   
-4. [Dataset examples](#dataset-examples)  
+4. [Dataset Examples](#dataset-examples)  
 5. [Misc](#misc)  
 
 ### Github Repos
@@ -258,7 +264,7 @@ gdal_translate -projwin -180 90 180 0 ${file} /vsistdout/ | gdalwarp -overwrite 
 ```
 
 Resize and convert all tifs in the folder to JPEG2000:  
-```shell
+```
 # without metadata
 width=1920
 ls *.tif | while read file; do
@@ -423,6 +429,45 @@ file='topo15_4320_hillshade_mask.tif'
 gdal_polygonize.py ${file} ${file%.*}.gpkg ${file%.*}
 ```
 
+### gdal_rasterize
+
+Burns vector geometries into a raster. Read the [docs](https://gdal.org/programs/gdal_rasterize.html).
+
+```
+gdal_rasterize [--help] [--help-general]
+    [-b <band>]... [-i] [-at]
+    [-oo <NAME>=<VALUE>]...
+    {[-burn <value>]... | [-a <attribute_name>] | [-3d]} [-add]
+    [-l <layername>]... [-where <expression>] [-sql <select_statement>|@<filename>]
+    [-dialect <dialect>] [-of <format>] [-a_srs <srs_def>] [-to <NAME>=<VALUE>]...
+    [-co <NAME>=<VALUE>]... [-a_nodata <value>] [-init <value>]...
+    [-te <xmin> <ymin> <xmax> <ymax>] [-tr <xres> <yres>] [-tap] [-ts <width> <height>]
+    [-ot {Byte/Int8/Int16/UInt16/UInt32/Int32/UInt64/Int64/Float32/Float64/
+         CInt16/CInt32/CFloat32/CFloat64}] [-optim {AUTO|VECTOR|RASTER}] [-q]
+    <src_datasource> <dst_filename>
+```
+
+**Example:**
+
+Rasterize vectors:  
+```
+gdal_rasterize PG:"dbname=osm" -l planet_osm_polygon -a levels -where "levels IS NOT NULL" -at /home/steve/Projects/maps/osm/${city}/${city}_buildings.tif
+
+# give pixel size
+gdal_rasterize -tr 1 1 -ts 1024 512 -a_nodata 0 -burn 1 -l ne_10m_land natural_earth_vector.gpkg ne_10m_land.tif
+
+# burn examples
+gdal_rasterize -at -add -burn -100 -where "highway IN ('motorway','trunk','primary')" PG:"dbname=osm" -l ${layer} ${file%.*}_360_3600_epsg3857_highways.tif
+
+gdal_rasterize -at -add -burn -1 -sql "SELECT ST_Buffer(wkb_geometry,100) FROM ${layer} WHERE highway IN ('motorway','trunk','primary')" PG:"dbname=osm" ${file%.*}_360_3600_epsg3857_highways.tif
+```
+
+Use rasterize to grid features:  
+```
+gdal_rasterize -at -tr 0.01 0.01 -l ACS_2019_5YR_TRACT ACS_2019_5YR_TRACT.gdb -a GEOID -a_nodata NA ACS_2019_5YR_TRACT_001.tif
+gdal_polygonize.py -8 -f "GPKG" ACS_2019_5YR_TRACT_001.tif ACS_2019_5YR_TRACT_001.gpkg ACS_2019_5YR_TRACT_001 GEOID
+```
+
 ### gdal_calc.py
 
 Command line raster calculator with numpy syntax. Read the [docs](https://gdal.org/programs/gdal_calc.html).
@@ -477,7 +522,7 @@ gdal_calc.py --overwrite -A topo_hillshade.tif -B hyp.tif --allBands B --outfile
 
 ### gdal_grid
 
-Creates regular grid from the scattered data.
+Creates regular grid from the scattered data. Read the [docs](https://gdal.org/programs/gdal_grid.html).
 
 ```
 gdal_grid [--help] [--help-general]
@@ -519,7 +564,7 @@ gdal_grid -of netCDF -co WRITE_BOTTOMUP=NO -zfield "temp" -a invdist -txe -180 1
 
 ### gdallocationinfo
 
-Raster query tool.
+Raster query tool. Read the [docs](https://gdal.org/programs/gdallocationinfo.html).
 
 ```
 Usage: gdallocationinfo [--help] [--help-general]
@@ -532,37 +577,47 @@ Usage: gdallocationinfo [--help] [--help-general]
 
 **Example:**
 
-Sample weather grid at places using *gdallocationinfo*:  
+Sample weather grid at coordinates in csv file:  
 ```
-echo "scalerank,name,lat,lon,rownum,temp" > ${file%.*}_places.csv
-cat /home/steve/Projects/maps/places.csv | while read line; do
+grid='/home/steve/maps/srtm/topo15.grd'
+coordinates='/home/steve/maps/places.csv'
+echo "scalerank,name,lat,lon,rownum,temp" > ${coordinates%.*}_values.csv
+cat ${file} | while read line; do
   coord=`echo "$line" | awk -F '\t' '{print $23,$22}'`
-  temp=`gdallocationinfo -wgs84 -valonly ${file%.*}.tif $coord`
-  echo -e "$line""\t""$temp" | awk -F '\t' '{print $1,$9,$22,$23,$38,$39}' OFS=',' >> ${file%.*}_places.csv
-done
-```
-
-
-Get raster extents and import into postgis  
-```shell
-psql -d world -c "DROP TABLE IF EXISTS places_extent; CREATE TABLE places_extent (fid serial primary key, name TEXT, geom geometry(POLYGON, 4326));"
-# get extents and insert into table
-ls ~/base-maps/hillshade/places/*.png | while read file; do
-  coords=($(gdalinfo ${file} | sed -E 's/[[:space:]]+//g' | grep 'LowerLeft\|UpperRight' | sed -e 's/LowerLeft(//g' -e 's/UpperRight(//g' -e 's/)//g' -e 's/,/ /g' | tr '\n' ' '))
-  psql -d world -c "INSERT INTO places_extent (name, geom) VALUES ('"$(basename ${file%.*})"', ST_SetSRID(ST_MakeEnvelope(${coords[0]}, ${coords[1]}, ${coords[2]}, ${coords[3]}), 4326));" 
+  temp=`gdallocationinfo -wgs84 -valonly ${grid} $coord`
+  echo -e "$line""\t""$temp" | awk -F '\t' '{print $1,$9,$22,$23,$38,$39}' OFS=',' >> ${file%.*}_values.csv
 done
 ```
 
 ## OGR
 
-Print info from ogr package with *ogrinfo*.  
-```shell
+### ogrinfo
 
+Lists information about an OGR-supported data source. With SQL statements it is also possible to edit data. Read the [docs](https://gdal.org/programs/ogrinfo.html).
+
+```
+ogrinfo [--help] [--help-general]
+        [-if <driver_name>] [-json] [-ro] [-q] [-where <restricted_where>|@f<ilename>]
+        [-spat <xmin> <ymin> <xmax> <ymax>] [-geomfield <field>] [-fid <fid>]
+        [-sql <statement>|@<filename>] [-dialect <sql_dialect>] [-al] [-rl]
+        [-so|-features] [-limit <nb_features>] [-fields={YES|NO}]]
+        [-geom={YES|NO|SUMMARY|WKT|ISO_WKT}] [-oo <NAME>=<VALUE>]...
+        [-nomd] [-listmdd] [-mdd <domain>|all]...
+        [-nocount] [-nogeomtype] [[-noextent] | [-extent3D]]
+        [-wkt_format WKT1|WKT2|<other_values>]
+        [-fielddomain <name>]
+        <datasource_name> [<layer> [<layer> ...]]
+```
+
+**Example:**
+
+Print tables/layers:  
+```
 # list tables using *sqlite_master* or *sqlite_schema*
 ogrinfo -dialect sqlite -sql 'SELECT tbl_name FROM sqlite_master' natural_earth_vector.gpkg
 ogrinfo -dialect sqlite -sql 'SELECT tbl_name FROM sqlite_schema' natural_earth_vector.gpkg
 
-# list tables with wildcard
+# list tables with sql wildcard
 ogrinfo -sql "SELECT tbl_name FROM sqlite_master WHERE name like 'ne_10m%'" natural_earth_vector.gpkg
 
 # list tables prettily
@@ -572,8 +627,8 @@ ogrinfo -so natural_earth_vector.gpkg | grep '^[0-9]' | grep 'ne_110m' | sed -e 
 ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like 'ne_50m%'" natural_earth_vector.gpkg | grep '=' | sed -e 's/^.*= //g' | while read table; do geomtype=$(ogrinfo -sql "SELECT GeometryType(geom) FROM ${table};" natural_earth_vector.gpkg | grep '=' | sed 's/^.*= //g'); if [[ ${geomtype} =~ 'POLYGON' ]]; then echo ${table}; fi; done
 ```
 
-Operations with *ogrinfo*
-```shell
+Operations with *ogrinfo*:  
+```
 # some basics
 ogrinfo db.sqlite -sql "VACUUM"
 ogrinfo db.sqlite -sql "SELECT CreateSpatialIndex('the_table','GEOMETRY')"
@@ -600,103 +655,13 @@ ogrinfo -update -sql 'ALTER TABLE lines ADD COLUMN x double; UPDATE lines SET x 
 ogrinfo -update -sql 'ALTER TABLE lines ADD COLUMN y double; UPDATE lines SET y = ST_Y(ST_Centroid(geom))' Bangkok.osm_gcp.gpkg
 ```
 
-# contours with levels
-ogr2ogr -overwrite -f "SQLite" -dsco SPATIALITE=YES -lco OVERWRITE=YES -dialect sqlite -sql "SELECT elev, ST_MakePolygon(GEOMETRY) FROM topo15_43200 WHERE elev IN (-10000,-9000,-8000,-7000,-6000,-5000,-4000,-3000,-2000,-1000,-900,-800,-700,-600,-500,-400,-300,-200,-100,0,100,200,300,400,500,600,700,800,900,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500,6000,6500,7000,7500,8000);" /home/steve/maps/srtm/srtm15/topo15_43200_polygon.sqlite -t_srs "EPSG:4326" -nlt POLYGON -nln topo15_43200_polygon -explodecollections /home/steve/maps/srtm/srtm15/topo15_43200.sqlite
-
-# contours with m values
-ogr2ogr -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10
-
-
-Export with *ogrinfo*
-```shell
+Export with *ogrinfo*:  
+```
 ogrinfo --config SPATIALITE_SECURITY=relaxed -dialect Spatialite -sql "SELECT ExportGeoJSON2('ne_110m_admin_0_countries', 'geom', 'ne_110m_admin_o_countries.geojson')" natural_earth_vector.gpkg
 ```
 
-ogr2ogr pipe to ogrinfo.  
-```shell
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -f GeoJSON -s_srs 'epsg:4326' -t_srs "+proj=ortho" /vsistdout/ -nln ${layer1} PG:dbname=world ${layer1} | ogrinfo -dialect sqlite -sql "SELECT X(Centroid(geometry)), Y(Centroid(geometry)) FROM ${layer1}" /vsistdin/
+Export features to svg using *ogrinfo*:  
 ```
-
-Select vector layers processed from the Natural Earth geopackage.  
-```shell
-ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' countries.gpkg naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries
-```
-
-Transform from lat-long to an orthographic projection, this time using *ogr2ogr* for vectors  
-```shell
-file='countries.gpkg'
-layer='countries'
-name='Cairo'
-xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
-```
-
-Transform to ortho  
-```shell
-rm -rf points1/*
-for x in $(seq -180 10 -160); do
-  for y in $(seq -90 10 -70); do
-    proj='+proj=ortho +lat_0='"${y}"' +lon_0='"${x}"' +ellps=sphere'
-    ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'epsg:4326' -t_srs "${proj}" -nln points1_${x}_${y} points1/points1_${x}_${y}.gpkg points1.gpkg points1
-  done
-done
-```
-
-Center the orthographic projection on the centroid of a country  
-```shell
-file='countries.gpkg'
-layer='countries'
-name='Brazil'
-xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
-```
-
-Clip and reproject vector and raster data to the same extent  
-```shell
-# make extent
-name='North America'
-extent=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)), round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${name}')" | grep '=' | sed -e 's/^.*= //g'))
-# clip hyp
-gdalwarp -te_srs 'EPSG:4326' -te ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} naturalearth/raster/HYP_HR_SR_OB_DR_5400_2700.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' /vsistdin/ hyp_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.tif
-# clip topo
-gdalwarp -te_srs 'EPSG:4326' -te ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} srtm/topo15_4000.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' /vsistdin/ topo_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.tif
-# clip vectors
-ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} -a_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' subunits_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.gpkg naturalearth/packages/natural_earth_vector.gpkg ne_10m_admin_0_map_subunits
-```
-
-Reproject with gcp  
-```bash
-file=London.osm.pbf
-layer=lines
-extent=($(ogrinfo -so ${file} ${layer} | grep 'Extent' | sed -e 's/Extent: //g' -e 's/(\|)//g' -e 's/ - /, /g' -e 's/, / /g'))
-x_min=-180
-x_max=180
-y_min=-45
-y_max=45
-ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} ${file%.osm.pbf}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${file}
-```
-
-Rasterize vector  
-```shell
-gdal_rasterize PG:"dbname=osm" -l planet_osm_polygon -a levels -where "levels IS NOT NULL" -at /home/steve/Projects/maps/osm/${city}/${city}_buildings.tif
-
-# give pixel size
-gdal_rasterize -tr 1 1 -ts 1024 512 -a_nodata 0 -burn 1 -l ne_10m_land natural_earth_vector.gpkg ne_10m_land.tif
-
-# burn examples
-gdal_rasterize -at -add -burn -100 -where "highway IN ('motorway','trunk','primary')" PG:"dbname=osm" -l ${layer} ${file%.*}_360_3600_epsg3857_highways.tif
-
-gdal_rasterize -at -add -burn -1 -sql "SELECT ST_Buffer(wkb_geometry,100) FROM ${layer} WHERE highway IN ('motorway','trunk','primary')" PG:"dbname=osm" ${file%.*}_360_3600_epsg3857_highways.tif
-```
-
-Use rasterize to grid features  
-```shell
-gdal_rasterize -at -tr 0.01 0.01 -l ACS_2019_5YR_TRACT ACS_2019_5YR_TRACT.gdb -a GEOID -a_nodata NA ACS_2019_5YR_TRACT_001.tif
-gdal_polygonize.py -8 -f "GPKG" ACS_2019_5YR_TRACT_001.tif ACS_2019_5YR_TRACT_001.gpkg ACS_2019_5YR_TRACT_001 GEOID
-```
-
-Export features to svg  
-```shell
 file=natural_earth_vector.gpkg
 layer=ne_50m_populated places
 width=1920
@@ -725,8 +690,8 @@ ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT
 done
 ```
 
-Convert all 50m polygon layers.  
-```shell
+Convert all 50m polygon layers:  
+```
 ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like 'ne_50m%'" natural_earth_vector.gpkg | grep '=' | sed -e 's/^.*= //g' | while read layer; do
   geomtype=$(ogrinfo -sql "SELECT GeometryType(geom) FROM ${layer};" natural_earth_vector.gpkg | grep '=' | sed 's/^.*= //g')
   if [[ ${geomtype} =~ 'POLYGON' ]]; then
@@ -741,8 +706,141 @@ ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like 'ne_50m%'" natural_
 done
 ```
 
-Merge layers.  
-```shell
+### ogr2ogr
+
+Converts simple features data between file formats. Read the [docs](https://gdal.org/programs/ogr2ogr.html).
+
+```
+ogr2ogr [--help] [--long-usage] [--help-general]
+        [-of <output_format>] [-dsco <NAME>=<VALUE>]... [-lco <NAME>=<VALUE>]...
+        [[-append]|[-upsert]|[-overwrite]]
+        [-update] [-sql <statement>|@<filename>] [-dialect <dialect>] [-spat <xmin> <ymin> <xmax> <ymax>]
+        [-where <restricted_where>|@<filename>] [-select <field_list>] [-nln <name>] [-nlt <type>]...
+        [-s_srs <srs_def>]
+        [[-a_srs <srs_def>]|[-t_srs <srs_def>]]
+        <dst_dataset_name> <src_dataset_name> [<layer_name>]...
+
+Field related options:
+       [-addfields] [-relaxedFieldNameMatch] [-fieldTypeToString All|<type1>[,<type2>]...]
+       [-mapFieldType <srctype>|All=<dsttype>[,<srctype2>=<dsttype2>]...] [-fieldmap <field_1>[,<field_2>]...]
+       [-splitlistfields] [-maxsubfields <n>] [-emptyStrAsNull] [-forceNullable] [-unsetFieldWidth]
+       [-unsetDefault] [-resolveDomains] [-dateTimeTo UTC|UTC(+|-)<HH>|UTC(+|-)<HH>:<MM>] [-noNativeData]
+
+Advanced geometry and SRS related options:
+       [-dim layer_dim|2|XY|3|XYZ|XYM|XYZM] [-s_coord_epoch <epoch>] [-a_coord_epoch <epoch>]
+       [-t_coord_epoch <epoch>] [-ct <pipeline_def>] [-spat_srs <srs_def>] [-geomfield <name>]
+       [-segmentize <max_dist>] [-simplify <tolerance>] [-makevalid] [-wrapdateline]
+       [-datelineoffset <val_in_degree>]
+       [-clipsrc [<xmin> <ymin> <xmax> <ymax>]|<WKT>|<datasource>|spat_extent]
+       [-clipsrcsql <sql_statement>] [-clipsrclayer <layername>] [-clipsrcwhere <expression>]
+       [-clipdst [<xmin> <ymin> <xmax> <ymax>]|<WKT>|<datasource>] [-clipdstsql <sql_statement>]
+       [-clipdstlayer <layername>] [-clipdstwhere <expression>] [-explodecollections] [-zfield <name>]
+       [-gcp <ungeoref_x> <ungeoref_y> <georef_x> <georef_y> [<elevation>]]...
+       [-tps] [-order 1|2|3]
+       [-xyRes <val>[ m|mm|deg]] [-zRes <val>[ m|mm]] [-mRes <val>] [-unsetCoordPrecision]
+
+Other options:
+       [--quiet] [-progress] [-if <format>]... [-oo <NAME>=<VALUE>]... [-doo <NAME>=<VALUE>]...
+       [-fid <FID>] [-preserve_fid] [-unsetFid]
+       [[-skipfailures]|[-gt <n>|unlimited]]
+       [-limit <nb_features>] [-ds_transaction] [-mo <NAME>=<VALUE>]... [-nomd]
+```
+
+**Example:**
+
+Pipe to ogrinfo:  
+```
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -f GeoJSON -s_srs 'epsg:4326' -t_srs "+proj=ortho" /vsistdout/ -nln ${layer1} PG:dbname=world ${layer1} | ogrinfo -dialect sqlite -sql "SELECT X(Centroid(geometry)), Y(Centroid(geometry)) FROM ${layer1}" /vsistdin/
+```
+
+Select layer:  
+```
+ogr2ogr -overwrite -f 'GPKG' -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' countries.gpkg naturalearth/packages/ne_110m_admin_0_boundary_lines_land_coastline_split1.gpkg countries
+```
+
+Transform from lat-long to ortho projection:  
+```
+file='countries.gpkg'
+layer='countries'
+name='Cairo'
+xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_10m_populated_places WHERE nameascii = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
+```
+
+Loop ortho projection:  
+```
+rm -rf points1/*
+for x in $(seq -180 10 -160); do
+  for y in $(seq -90 10 -70); do
+    proj='+proj=ortho +lat_0='"${y}"' +lon_0='"${x}"' +ellps=sphere'
+    ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'epsg:4326' -t_srs "${proj}" -nln points1_${x}_${y} points1/points1_${x}_${y}.gpkg points1.gpkg points1
+  done
+done
+```
+
+Center the orthographic projection on the centroid of given country:  
+```
+file='countries.gpkg'
+layer='countries'
+name='Brazil'
+xy=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM ne_110m_admin_0_countries WHERE name = '${name}'" | grep '=' | sed -e 's/^.*= //g'))
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${xy[1]}'" +lon_0="'${xy[0]}'" +ellps='sphere'' ${layer}_ortho_"${xy[0]}"_"${xy[1]}".gpkg ${file} ${layer}
+```
+
+Clip and reproject vector and raster data to the same extent:  
+```
+# make extent
+name='North America'
+extent=($(ogrinfo naturalearth/packages/natural_earth_vector.gpkg -sql "SELECT ROUND(ST_MinX(geom)), ROUND(ST_MinY(geom)), ROUND(ST_MaxX(geom)), ROUND(ST_MaxY(geom)), round(ST_X(ST_Centroid(geom))), round(ST_Y(ST_Centroid(geom))) FROM (SELECT ST_Union(geom) geom FROM ne_110m_admin_0_countries WHERE CONTINENT = '${name}')" | grep '=' | sed -e 's/^.*= //g'))
+# clip hyp
+gdalwarp -te_srs 'EPSG:4326' -te ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} naturalearth/raster/HYP_HR_SR_OB_DR_5400_2700.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' /vsistdin/ hyp_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.tif
+# clip topo
+gdalwarp -te_srs 'EPSG:4326' -te ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} srtm/topo15_4000.tif /vsistdout/ | gdalwarp -overwrite -dstalpha -s_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' /vsistdin/ topo_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.tif
+# clip vectors
+ogr2ogr -overwrite -skipfailures --config OGR_ENABLE_PARTIAL_REPROJECTION TRUE -clipsrc ${extent[0]} ${extent[1]} ${extent[2]} ${extent[3]} -a_srs 'EPSG:4326' -t_srs '+proj=ortho +lat_0="'${extent[5]}'" +lon_0="'${extent[4]}'" +ellps='sphere'' subunits_${extent[0]}_${extent[1]}_${extent[2]}_${extent[3]}.gpkg naturalearth/packages/natural_earth_vector.gpkg ne_10m_admin_0_map_subunits
+```
+
+Perform spatial operation using sql:  
+```
+ogr2ogr -overwrite -f "SQLite" -dsco SPATIALITE=YES -lco OVERWRITE=YES -dialect sqlite -sql "SELECT elev, ST_MakePolygon(GEOMETRY) FROM topo15_43200 WHERE elev IN (-10000,-9000,-8000,-7000,-6000,-5000,-4000,-3000,-2000,-1000,-900,-800,-700,-600,-500,-400,-300,-200,-100,0,100,200,300,400,500,600,700,800,900,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500,6000,6500,7000,7500,8000);" /home/steve/maps/srtm/srtm15/topo15_43200_polygon.sqlite -t_srs "EPSG:4326" -nlt POLYGON -nln topo15_43200_polygon -explodecollections /home/steve/maps/srtm/srtm15/topo15_43200.sqlite
+```
+
+Add m values:  
+```
+ogr2ogr -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10
+```
+
+Reproject with gcp:  
+```
+file=London.osm.pbf
+layer=lines
+extent=($(ogrinfo -so ${file} ${layer} | grep 'Extent' | sed -e 's/Extent: //g' -e 's/(\|)//g' -e 's/ - /, /g' -e 's/, / /g'))
+x_min=-180
+x_max=180
+y_min=-45
+y_max=45
+ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} ${file%.osm.pbf}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${file}
+```
+
+### ogrmerge.py
+
+Merge several vector datasets into a single one. Read the [docs](https://gdal.org/programs/ogrmerge.html).
+
+```
+ogrmerge.py [--help] [--help-general]
+            -o <out_dsname> <src_dsname> [<src_dsname>]...
+            [-f format] [-single] [-nln <layer_name_template>]
+            [-update | -overwrite_ds] [-append | -overwrite_layer]
+            [-src_geom_type <geom_type_name>[,<geom_type_name>]...]
+            [-dsco <NAME>=<VALUE>]... [-lco <NAME>=<VALUE>]...
+            [-s_srs <srs_def>] [-t_srs <srs_def> | -a_srs <srs_def>]
+            [-progress] [-skipfailures] [--help-general]
+```
+
+**Example:**
+
+Merge layers with VRT file:  
+```
 # use ogrmerge
 ogrmerge.py -f VRT -o asean.vrt $(ls *.osm.pbf | tr '\n' ' ')
 
@@ -772,41 +870,41 @@ EOM
 ## SAGA-GIS
 
 Misc  
-```shell
+```
 saga_cmd --cores 1
 ```
 
 Classify  
-```shell
+```
 saga_cmd imagery_classification 1 -NCLUSTER 20 -MAXITER 0 -METHOD 1 -GRIDS N43W080_wgs84_500_5000.tif -CLUSTER N43W080_wgs84_500_5000_cluster.tif
 ```
 
 Watershed  
-```shell
+```
 saga_cmd imagery_segmentation 0 -OUTPUT 0 -DOWN 1 -JOIN 0 -THRESHOLD 0 -EDGE 1 -BBORDERS 0 -GRID N43W080_wgs84_500.tif -SEGMENTS N43W080_wgs84_500_segments.tif
 
 saga_cmd ta_channels 5 -THRESHOLD 1 -DEM N43W080_wgs84_500.tif -SEGMENTS N43W080_wgs84_500_segments.shp -BASINS N43W080_wgs84_500_basins.shp
 ```
 
 Raster to polygons  
-```shell
+```
 saga_cmd shapes_grid 6 -GRID N43W080_wgs84.tif -POLYGONS N43W080_wgs84.shp
 ```
 
 Raster values to vector  
-```shell
+```
 saga_cmd shapes_grid 0
 
 saga_cmd shapes_grid 1
 ```
 
 Arrows  
-```shell
+```
 saga_cmd shapes_grid 15 -SURFACE N43W080_wgs84_500.tif -VECTORS N43W080_wgs84_500_gradient.shp
 ```
 
 Vector processing  
-```shell
+```
 saga_cmd shapes_lines
 
 saga_cmd shapes_points
@@ -815,17 +913,17 @@ saga_cmd shapes_polygons
 ```
 
 Smoothing  
-```shell
+```
 saga_cmd shapes_lines 7 -SENSITIVITY 3 -ITERATIONS 10 -PRESERVATION 10 -SIGMA 2 -LINES_IN N43W080_wgs84_500_segments.shp -LINES_OUT N43W080_wgs84_500_segments_smooth.shp
 ```
 
 Landscape  
-```shell
+```
 saga_cmd ta_compound 0 -THRESHOLD 1 -ELEVATION N43W080_wgs84_500.tif -SHADE N43W080_wgs84_500_shade.tif -CHANNELS N43W080_wgs84_500_channels.shp -BASINS N43W080_wgs84_500_basins.shp
 ```
 
 Terrain  
-```shell
+```
 saga_cmd ta_morphometry 16 -DEM N43W080_wgs84_500.tif -TRI N43W080_wgs84_500_tri.shp
 
 saga_cmd ta_morphometry 17 -DEM N43W080_wgs84_500.tif -VRM N43W080_wgs84_500_vrm.tif
@@ -834,7 +932,7 @@ saga_cmd ta_morphometry 18 -DEM N43W080_wgs84_500.tif -TPI N43W080_wgs84_500_tpi
 ```
 
 TIN  
-```shell
+```
 saga_cmd tin_tools 0 -GRID N48W092_N47W092_N48W091_N47W091_smooth.tif -TIN N48W092_N47W092_N48W091_N47W091_tin.shp
 
 saga_cmd tin_tools 3 -TIN N48W092_N47W092_N48W091_N47W091_tin.shp -POLYGONS N48W092_N47W092_N48W091_N47W091_poly.shp
@@ -843,7 +941,7 @@ saga_cmd tin_tools 3 -TIN N48W092_N47W092_N48W091_N47W091_tin.shp -POLYGONS N48W
 ## Dataset Examples
 
 ### ALOS
-```shell
+```
 # download from https://www.eorc.jaxa.jp/ALOS/en/dataset/aw3d30/aw3d30_e.htm
 
 # alos merge directory
@@ -869,7 +967,7 @@ gdal_polygonize.py ${dir}_hillshade_mask.tif ${dir}_hillshade_polygon.gpkg hills
 ### Natural Earth  
 
 OGR/BASH scripts to work with Natural Earth vectors (download the data here: https://naciscdn.org/naturalearth/packages/natural_earth_vector.gpkg.zip)  
-```shell
+```
 #==============# 
 # earth-to-svg #
 #==============#
@@ -913,7 +1011,7 @@ ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT
 done
 ```
 
-```shell
+```
 #================# 
 # earth-to-ortho #
 #================#
@@ -978,7 +1076,7 @@ for x in $(seq -180 40 180); do
 done
 ```
 
-```shell
+```
 #==================# 
 # earth-to-geojson #
 #==================#
@@ -990,7 +1088,7 @@ layer=ne_110m_admin_0_countries
 ogr2ogr -f GeoJSON ${layer}.geojson natural_earth_vector.gpkg ${layer}
 ```
 
-```shell
+```
 #=================# 
 # earth-to-raster #
 #=================#
@@ -1013,7 +1111,7 @@ done
 convert naturalearth_layers.tif naturalearth_layers.png
 ```
 
-```shell
+```
 #===============# 
 # earth-clipper #
 #===============#
@@ -1064,7 +1162,7 @@ ogrinfo -sql 'SELECT name FROM ne_10m_admin_0_countries' natural_earth_vector.gp
 done
 ```
 
-```shell
+```
 #================# 
 # earth-contours #
 #================#
@@ -1083,7 +1181,7 @@ gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -tr 0.04 0.04 -r cubicspline -cro
 ogr2ogr -append -update -makevalid -s_srs 'EPSG:4326' -t_srs 'EPSG:3857' -clipsrc 'naturalearth/packages/natural_earth_vector.gpkg' -clipsrclayer ${layer} -clipsrcwhere "name = '${name}'" -nlt MULTIPOLYGON -nln contour_clip top15_${name// /_}_${interval}m.gpkg top15_${name// /_}_${interval}m.gpkg contour
 ```
 
-```shell
+```
 #=====================# 
 # earth-georeferencer #
 #=====================#
@@ -1099,7 +1197,7 @@ ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${exten
 
 ### OpenStreetMap
 
-```shell
+```
 # osm data online
 wget -O muenchen.osm "https://api.openstreetmap.org/api/0.6/map?bbox=11.54,48.14,11.543,48.145"
 
@@ -1111,7 +1209,7 @@ osm2pgsql --create --cache 800 --disable-parallel-indexing --unlogged --flat-nod
 ```
 
 Osmium  
-```shell
+```
 # extent
 file="/home/steve/Projects/maps/dem/srtm/N45W073_wgs84.tif"
 osmium extract --overwrite -b `echo $(gdalinfo ${file} | grep "Lower Left" | sed 's/Lower Left *( //g' | sed 's/,  /,/g' | sed 's/).*$//g')$(gdalinfo ${file} | grep "Upper Right" | sed 's/Upper Right *( /,/g' | sed 's/,  /,/g' | sed 's/).*$//g')` /home/steve/Projects/maps/osm/north-america-latest.osm.pbf -o ${file%.*}.pbf
@@ -1130,7 +1228,7 @@ osmium cat `ls /home/steve/maps/osm/city/*.pbf | tr '\n' ' '` -o /home/steve/map
 ```
 
 osmconvert/osmfilter  
-```shell
+```
 # list tags
 osmfilter /home/steve/maps/osm/highway_primary.o5m --out-count | head
 # convert
@@ -1142,19 +1240,19 @@ osmfilter /home/steve/maps/osm/planet-latest.o5m --keep= --keep-ways="highway=" 
 ### SRTM
 
 Download  
-```shell
+```
 wget --user --password http://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/N44W080.SRTMGL1.hgt.zip
 ```
 
 Extract ocean and make positive for watershed analysis  
-```shell
+```
 gdal_calc.py --overwrite --NoDataValue=0 -A topo15_4320.tif --outfile=topo15_4320_ocean.tif --calc="(A + 10207.5)*(A<=100)"
 ```
 
 ### StatsCan
 
 Import  
-```shell
+```
 ogr2ogr -overwrite -nlt promote_to_multi pg:dbname=canada lda_000b21a_e.shp
 psql -d canada -c "CREATE TABLE census_profile_ontario_2021 (CENSUS_YEAR VARCHAR,DGUID VARCHAR,ALT_GEO_CODE VARCHAR,GEO_LEVEL VARCHAR,GEO_NAME VARCHAR,TNR_SF VARCHAR,TNR_LF VARCHAR,DATA_QUALITY_FLAG VARCHAR,CHARACTERISTIC_ID VARCHAR,CHARACTERISTIC_NAME VARCHAR,CHARACTERISTIC_NOTE VARCHAR,C1_COUNT_TOTAL VARCHAR,SYMBOL VARCHAR,C2_COUNT_MEN VARCHAR,SYMBOL VARCHAR,C3_COUNT_WOMEN VARCHAR,SYMBOL VARCHAR,C10_RATE_TOTAL VARCHAR,SYMBOL VARCHAR,C11_RATE_MEN VARCHAR,SYMBOL VARCHAR,C12_RATE_WOMEN VARCHAR,SYMBOL VARCHAR)"
 ```
@@ -1162,7 +1260,7 @@ psql -d canada -c "CREATE TABLE census_profile_ontario_2021 (CENSUS_YEAR VARCHAR
 ### Wikipedia/Wikidata
 
 Wikidata query output  
-```shell
+```
 cat ecoregions.tsv | awk -F '\t' '{print $3}' | while read url; do
   echo ${url}
   w3m -dump "${url}" | awk '/^Physical\[edit\]/,/Climate\[edit\]/' || break
@@ -1175,13 +1273,13 @@ lynx -dump ${url}
 ```
 
 Import wikidata query results into psql  
-```shell
+```
 psql -d world -c "DROP TABLE IF EXISTS wiki_ecoregions; CREATE TABLE wiki_ecoregions($(head -1 ecoregions.tsv | sed -e 's/\t/ VARCHAR,/g' -e 's/$/ VARCHAR/g'));"
 psql -d world -c "\COPY wiki_ecoregions FROM 'ecoregions.tsv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true);"
 ```
 
 Wikitables
-```shell
+```
 # convert wikipedia tables
 ./.local/bin/wikitables 'List_of_terrestrial_ecoregions_(WWF)' > /home/steve/wikipedia/tables/table_wwf_ecoregions.json
 # split master list
@@ -1189,7 +1287,7 @@ cat /home/steve/wikipedia/lists_master.csv | grep -i "mountains" | csvcut --colu
 ```
 
 Wikipedia api  
-```shell
+```
 # by pagename
 https://en.wikipedia.org/w/api.php?action=parse&page=Atlantic_Equatorial_coastal_forests&format=json
 
@@ -1545,7 +1643,7 @@ logo: P154
 ```
 
 Wikipedia dump  
-```shell
+```
 # format data dump
 bzcat /home/steve/maps/wikipedia/enwiki-latest-pages-articles-multistream.xml.bz2 | perl -pe 's/<\/page>/<\/page>\a/g;' | tr -d $'\t' | tr $'\n' $'\t' | tr $'\a' $'\n' > /home/steve/maps/wikipedia/enwiki-latest-pages-articles-multistream.xml
 # recompress
@@ -1624,7 +1722,7 @@ cat /home/steve/maps/wikipedia/enwiki-geonames.csv | while read line; do urlenco
 ## Misc
 
 Common shell commands  
-```shell
+```
 # disk usage
 du -h --max-depth=1 /home/steve/maps | sort -h
 
@@ -1716,7 +1814,7 @@ sed 's/.foo/&bar/'
 ```
 
 ascii art  
-```shell
+```
 # jp2a
 jp2a --color --html --html-fontsize=10 --width=150 --background=light --output=frame_000007.html frame_000007.jpg
 
@@ -1725,13 +1823,13 @@ figlet -d /usr/share/figlet/fonts -f Isometric1 seoul
 ```
 
 xmlstarlet  
-```shell
+```
 # xmlstarlet
 xmlstarlet sel -t -v xml/page/revision/text
 ```
 
 jq  
-```shell
+```
 # searching
 cat kg.json | jq -r '.[] | ."Population distribution"'
 cat kg.json | jq '.Geography."Population distribution".text'
@@ -1757,7 +1855,7 @@ curl -q ${url} | jq '.jsondata.data' > ${hood}.geojson
 ```
 
 vim  
-```shell
+```
 # file
 :e /file
 :w /file
@@ -1778,7 +1876,7 @@ ctrl-w-v
 ```
 
 git  
-```shell
+```
 # commit
 git add .
 git commit -m 'update'
@@ -1797,7 +1895,7 @@ git remote set-url origin git@github.com:geographyclub/american-geography.git
 ```
 
 nginx  
-```shell
+```
 # for directory listing
 sudo mkdir countries
 sudo chown steve:steve countries
@@ -1823,7 +1921,7 @@ location /qgisserver {
 ```
 
 sqlite  
-```shell
+```
 # common tings
 .tables
 .quit
@@ -1848,7 +1946,7 @@ ogr2ogr -overwrite -update -f "SQLite" -dsco SPATIALITE=YES -dialect sqlite -sql
 ```
 
 svg  
-```shell
+```
 # transform
 # scale
 sed -i 's/matrix(1,0,0,1/matrix(2,0,0,2/g' /home/steve/Downloads/test.svg
@@ -1926,7 +2024,7 @@ ffmpeg -y -t 100 -r 24 -i '/home/steve/git/weatherchan/maps/atlas/%03d.svg' -i '
 ```
 
 ffmpeg  
-```shell
+```
 # capture screen
 ffmpeg -video_size 1024x768 -framerate 25 -f x11grab -i :0.0+0+0 ~/output.mp4
 
