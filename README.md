@@ -5,9 +5,11 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 ## TABLE OF CONTENTS
 
 ### Sections
-1. [GDAL](#GDAL) •gdalinfo •gdalwarp •gdal_translate •gdal_contour •gdaldem •gdal_polygonize.py •gdal_rasterize •gdal_calc.py •gdal_grid •gdallocationinfo
-2. [OGR](#OGR) •ogrinfo •ogr2ogr •ogrmerge.py
-3. [SAGA-GIS](#saga-gis)   
+1. [GDAL](#GDAL)  
+   •gdalinfo •gdalwarp •gdal_translate •gdal_contour •gdaldem •gdal_polygonize.py •gdal_rasterize •gdal_calc.py •gdal_grid •gdallocationinfo
+2. [OGR](#OGR)  
+   •ogrinfo •ogr2ogr •ogrmerge.py
+3. [SAGA-GIS](#saga-gis)  
 4. [Dataset Examples](#dataset-examples)  
 5. [Misc](#misc)  
 
