@@ -35,7 +35,7 @@ gdalinfo [--help] [--help-general]
          <datasetname>
 ```
 
-**Example:**
+**Example**
 
 Print histogram:  
 ```
@@ -83,7 +83,7 @@ Advanced options:
          [-if <format>]... [-srcband <band>]... [-dstband <band>]...
 ```
 
-**Example:**
+**Example**
 
 Resize raster:  
 ```
@@ -220,7 +220,7 @@ gdal_translate [--help] [--help-general] [--long-usage]
    <src_dataset> <dst_dataset>
 ```
 
-****Example:****
+****Example****
 
 Georeference raster:  
 ```
@@ -281,7 +281,7 @@ gdal_contour [--help] [--help-general]
              <src_filename> <dst_filename>
 ```
 
-**Example:**
+**Example**
 
 Make contours from topo:  
 ```
@@ -322,7 +322,7 @@ gdaldem hillshade <input_dem> <output_hillshade>
             [-compute_edges] [-b <Band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
 ```
 
-**Example:**
+**Example**
 
 ```
 file='topo15_4320.tif'
@@ -354,7 +354,7 @@ gdaldem slope <input_dem> <output_slope_map>
             [-compute_edges] [-b <band>] [-of <format>] [-co <NAME>=<VALUE>]... [-q]
 ```
 
-**Example:**
+**Example**
 
 ```
 file='/home/steve/maps/srtm/topo15_43200.tif'
@@ -372,7 +372,7 @@ gdaldem aspect <input_dem> <output_aspect_map>
             [-compute_edges] [-b <band>] [-of format] [-co <NAME>=<VALUE>]... [-q]
 ```
 
-**Example:**
+**Example**
 
 ```
 file='/home/steve/maps/srtm/topo15.grd'
@@ -391,7 +391,7 @@ gdaldem color-relief <input_dem> <color_text_file> <output_color_relief_map>
 where color_text_file contains lines of the format "elevation_value red green blue"
 ```
 
-**Example:**
+**Example**
 
 Color DEM with color file, eg. white-black.txt:  
 ```
@@ -411,7 +411,7 @@ gdal_polygonize.py [--help] [--help-general]
                    [-overwrite] <out_file> [<layer>] [<fieldname>]
 ```
 
-**Example:**
+**Example**
 
 ```
 file='topo15_4320_hillshade_mask.tif'
@@ -436,7 +436,7 @@ gdal_rasterize [--help] [--help-general]
     <src_datasource> <dst_filename>
 ```
 
-**Example:**
+**Example**
 
 Rasterize vectors:  
 ```
@@ -467,7 +467,7 @@ gdal_calc.py [--help] [--help-general]
              [--A_band=<n>] [-B...-Z <filename>] [<other_options>]
 ```
 
-**Example:**
+**Example**
 
 Raster math with *gdal_calc*:  
 ```
@@ -530,7 +530,7 @@ gdal_grid [--help] [--help-general]
           <src_datasource> <dst_filename>
 ```
 
-**Example:**
+**Example**
 
 Make grid from points using VRT and gdal_grid:  
 ```
@@ -564,7 +564,7 @@ Usage: gdallocationinfo [--help] [--help-general]
                         [-oo <NAME>=<VALUE>]... <srcfile> [<x> <y>]
 ```
 
-**Example:**
+**Example**
 
 Sample weather grid at coordinates in csv file:  
 ```
@@ -598,7 +598,7 @@ ogrinfo [--help] [--help-general]
         <datasource_name> [<layer> [<layer> ...]]
 ```
 
-**Example:**
+**Example**
 
 Print tables/layers:  
 ```
@@ -735,7 +735,7 @@ Other options:
        [-limit <nb_features>] [-ds_transaction] [-mo <NAME>=<VALUE>]... [-nomd]
 ```
 
-**Example:**
+**Example**
 
 Pipe to ogrinfo:  
 ```
@@ -826,7 +826,7 @@ ogrmerge.py [--help] [--help-general]
             [-progress] [-skipfailures] [--help-general]
 ```
 
-**Example:**
+**Example**
 
 Merge layers with VRT file:  
 ```
