@@ -681,9 +681,11 @@ done
 
 Convert all 50m polygon layers:  
 ```
-ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like 'ne_50m%'" natural_earth_vector.gpkg | grep '=' | sed -e 's/^.*= //g' | while read layer; do
+name='ne_50m_admin_0'
+mkdir svg
+ogrinfo -sql "SELECT name FROM sqlite_master WHERE name like '${name}%'" natural_earth_vector.gpkg | grep '=' | sed -e 's/^.*= //g' | while read layer; do
   geomtype=$(ogrinfo -sql "SELECT GeometryType(geom) FROM ${layer};" natural_earth_vector.gpkg | grep '=' | sed 's/^.*= //g')
-  if [[ ${geomtype} =~ 'POLYGON' ]]; then
+  if [[ ${geomtype} =~ 'POLYGON || MULTIPOLYGON' ]]; then
     ogrinfo -dialect sqlite -sql "SELECT ST_MinX(extent(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_MaxY(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxX(extent(geom)) - ST_MinX(extent(geom))) || CAST(X'09' AS TEXT) || (ST_MaxY(extent(geom)) - ST_MinY(extent(geom))) FROM '"${layer}"'" natural_earth_vector.gpkg | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
       echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="'${height}'" width="'${width}'" viewBox="'${array[0]}' '${array[1]}' '${array[2]}' '${array[3]}'">' > svg/${layer}.svg
       ogrinfo -dialect sqlite -sql "SELECT fid || CAST(X'09' AS TEXT) || ST_X(ST_Centroid(geom)) || CAST(X'09' AS TEXT) || (-1 * ST_Y(ST_Centroid(geom))) || CAST(X'09' AS TEXT) || AsSVG(geom, 1) || CAST(X'09' AS TEXT) || GeometryType(geom) FROM ${layer} WHERE geom NOT LIKE '%null%'" ${file} | grep -e '=' | sed -e 's/^.*://g' -e 's/^.* = //g' | while IFS=$'\t' read -a array; do
@@ -809,6 +811,38 @@ x_max=180
 y_min=-45
 y_max=45
 ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} ${file%.osm.pbf}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${file}
+```
+
+Create vector tiles (MVT) of RiverATLAS:  
+```
+# set up directories
+cd ~/maplibre-testing
+rm -rf vector-tiles
+rm -rf vector-tiles-10000
+rm -rf vector-tiles-1000
+rm -rf vector-tiles-100
+
+# create tiles at different zoom levels
+# -lco TILE_FEATURE_LIMIT=5000
+ogr2ogr -f MVT vector-tiles-10000 PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 10000" -nlt LINESTRING -nln rivers -dsco MINZOOM=0 -dsco MAXZOOM=2 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
+ogr2ogr -f MVT vector-tiles-1000 PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 1000" -nlt LINESTRING -nln rivers -dsco MINZOOM=3 -dsco MAXZOOM=4 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
+ogr2ogr -f MVT vector-tiles-100 PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 100" -nlt LINESTRING -nln rivers -dsco MINZOOM=5 -dsco MAXZOOM=6 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
+
+# merge directories
+mkdir vector-tiles
+cp -r vector-tiles-10000/* vector-tiles/
+cp -r vector-tiles-1000/* vector-tiles/
+cp -r vector-tiles-100/* vector-tiles/
+
+# add necessary files
+cp tiles.json vector-tiles/;
+cp mvt_test.html vector-tiles/;
+
+# add and run server (optional)
+cp cors_server.py vector-tiles/;
+# run cors-safe server
+cd ~/maplibre-testing/vector-tiles
+./cors_server.py
 ```
 
 ### ogrmerge.py
