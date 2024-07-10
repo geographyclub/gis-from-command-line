@@ -813,36 +813,16 @@ y_max=45
 ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} ${file%.osm.pbf}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${file}
 ```
 
-Create vector tiles (MVT) of RiverATLAS:  
+Create vector tiles (MVT):  
 ```
-# set up directories
-cd ~/maplibre-testing
-rm -rf vector-tiles
-rm -rf vector-tiles-10000
-rm -rf vector-tiles-1000
-rm -rf vector-tiles-100
-
-# create tiles at different zoom levels
+# single layer
 # -lco TILE_FEATURE_LIMIT=5000
+ogr2ogr -f MVT vector-tiles PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 1000" -nlt LINESTRING -nln rivers -dsco MINZOOM=0 -dsco MAXZOOM=15 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
+
+# merging multiple layers at different zoom levels (hydroatlas)
 ogr2ogr -f MVT vector-tiles-10000 PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 10000" -nlt LINESTRING -nln rivers -dsco MINZOOM=0 -dsco MAXZOOM=2 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
 ogr2ogr -f MVT vector-tiles-1000 PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 1000" -nlt LINESTRING -nln rivers -dsco MINZOOM=3 -dsco MAXZOOM=4 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
 ogr2ogr -f MVT vector-tiles-100 PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 100" -nlt LINESTRING -nln rivers -dsco MINZOOM=5 -dsco MAXZOOM=6 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
-
-# merge directories
-mkdir vector-tiles
-cp -r vector-tiles-10000/* vector-tiles/
-cp -r vector-tiles-1000/* vector-tiles/
-cp -r vector-tiles-100/* vector-tiles/
-
-# add necessary files
-cp tiles.json vector-tiles/;
-cp mvt_test.html vector-tiles/;
-
-# add and run server (optional)
-cp cors_server.py vector-tiles/;
-# run cors-safe server
-cd ~/maplibre-testing/vector-tiles
-./cors_server.py
 ```
 
 ### ogrmerge.py
@@ -2057,4 +2037,100 @@ ffmpeg -i ortho_68_25_04_28_112609.mp4 -vf "pad=1920:1080:1920-256:1080-28" orth
 
 # split video using scene detection
 ffmpeg -i '02 Scientology.mp4' -vf "select='gt(scene,0.1)',setpts=N/FRAME_RATE/TB" -f segment -reset_timestamps 1 -map 0 output_%03d.mp4
+```
+
+Create vector tiles (MVT) for maplibre:  
+```
+# set up
+cd ~/maplibre-testing
+rm -rf vector-tiles
+
+# make tiles in directories
+ogr2ogr -f MVT vector-tiles PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 1000" -nlt LINESTRING -nln rivers -dsco MINZOOM=0 -dsco MAXZOOM=15 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
+
+# sample tiles.json
+cd vector-tiles
+cat > tiles.json <<- EOM
+{
+   "tiles":[
+      "http://localhost:8000/{z}/{x}/{y}.pbf"
+   ],
+   "id":"hydroatlas",
+   "name":"hydroatlas",
+   "format":"pbf",
+   "type":"vector",
+   "description":"osm",
+   "bounds":[-180,-90,180,90],
+   "center":[0,0],
+   "minzoom":0,
+   "maxzoom":15,
+   "vector_layers":[
+      {
+         "id":"rivers",
+         "fields":{
+            "upland_skm":"Number"
+         },
+         "minzoom":0,
+         "maxzoom":15
+      }
+   ],
+   "tilejson":"2.0.0"
+}
+
+# sample maplibre script
+const map = new maplibregl.Map({
+	container: 'map',
+	style: {
+		version: 8,
+		sources: {
+			'raster-tiles': {
+				type: 'raster',
+				tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+				tileSize: 256,
+				attribution: '&copy; OpenStreetMap Contributors',
+			},
+			'vector-tiles': {
+				type: 'vector',
+				url: 'http://localhost:8000/tiles.json' // Path to your tiles.json file
+			}
+		},
+		layers: [
+			{
+				id: 'raster-layer',
+				type: 'raster',
+				source: 'raster-tiles'
+			},
+			{
+				id: 'hydroatlas',
+				type: 'line',
+				source: 'vector-tiles',
+				'source-layer': 'rivers',
+				paint: {
+					'line-color': [
+						'interpolate',
+						['linear'],
+						['get', 'upland_skm'],
+						100, 'rgba(170, 211, 223, 1)',
+						10000, 'rgba(170, 211, 223, 1)'                    
+					],
+					'line-width': [
+						'interpolate',
+						['linear'],
+						['get', 'upland_skm'],
+						100, 1,
+						10000, 4
+					]
+				}
+			}
+		]
+	},
+	center: [-91.84124143565003, 32.907178792281],
+	zoom: 4
+});
+
+# add and run server (optional)
+cp cors_server.py vector-tiles/
+# run cors-safe server
+cd ~/maplibre-testing/vector-tiles
+./cors_server.py
 ```
