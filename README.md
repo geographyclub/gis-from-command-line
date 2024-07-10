@@ -819,7 +819,7 @@ Create vector tiles (MVT):
 # -lco TILE_FEATURE_LIMIT=5000
 ogr2ogr -f MVT vector-tiles PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 1000" -nlt LINESTRING -nln rivers -dsco MINZOOM=0 -dsco MAXZOOM=15 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
 
-# merging multiple layers at different zoom levels (hydroatlas)
+# multiple layers at different zoom levels
 ogr2ogr -f MVT vector-tiles-10000 PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 10000" -nlt LINESTRING -nln rivers -dsco MINZOOM=0 -dsco MAXZOOM=2 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
 ogr2ogr -f MVT vector-tiles-1000 PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 1000" -nlt LINESTRING -nln rivers -dsco MINZOOM=3 -dsco MAXZOOM=4 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
 ogr2ogr -f MVT vector-tiles-100 PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 100" -nlt LINESTRING -nln rivers -dsco MINZOOM=5 -dsco MAXZOOM=6 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
@@ -2049,8 +2049,6 @@ rm -rf vector-tiles
 ogr2ogr -f MVT vector-tiles PG:dbname=world -sql "SELECT upland_skm, ST_ChaikinSmoothing(shape, 1) shape FROM riveratlas_v10 WHERE upland_skm >= 1000" -nlt LINESTRING -nln rivers -dsco MINZOOM=0 -dsco MAXZOOM=15 -dsco COMPRESS=NO -dsco SIMPLIFICATION=0.0 -dsco SIMPLIFICATION_MAX_ZOOM=0.0 -explodecollections
 
 # sample tiles.json
-cd vector-tiles
-cat > tiles.json <<- EOM
 {
    "tiles":[
       "http://localhost:8000/{z}/{x}/{y}.pbf"
@@ -2128,9 +2126,6 @@ const map = new maplibregl.Map({
 	zoom: 4
 });
 
-# add and run server (optional)
-cp cors_server.py vector-tiles/
-# run cors-safe server
-cd ~/maplibre-testing/vector-tiles
+# run cors server (optional)
 ./cors_server.py
 ```
