@@ -421,6 +421,10 @@ gdal_polygonize.py ${file} ${file%.*}.gpkg ${file%.*}
 file='topo15_432.tif'
 rm -rf ${file%.*}.gpkg
 gdal_polygonize.py -mask ~/maps/naturalearth/packages/misc/land_mask.tif ${file} ${file%.*}.gpkg ${file%.*}
+
+# polygonize labels then union
+gdal_polygonize.py toronto_labels.tif toronto_labels.gpkg 
+ogr2ogr -overwrite toronto_labels_union.gpkg -sql 'SELECT ST_Union(geom) geom FROM out' toronto_labels.gpkg
 ```
 
 ### gdal_rasterize
@@ -1770,6 +1774,15 @@ ALTER TABLE allcountries ADD COLUMN enwiki_title text;
 UPDATE allcountries a SET enwiki_title = b.enwiki_title FROM allcountries_wiki b WHERE a.geonameid = b.geonameid;
 # convert url characters
 cat /home/steve/maps/wikipedia/enwiki-geonames.csv | while read line; do urlencode -d ${line} | sed -e 's/_/ /g' -e 's/ /\t/1' >> /home/steve/maps/wikipedia/enwiki-geonames.tmp; done
+```
+
+### WWF Ecoregions
+
+Clip raster to ecoregions  
+```
+ecoregion='Guianan Highlands moist forests'
+dem='topo15.grd'
+gdalwarp -s_srs 'EPSG:4326' -t_srs 'EPSG:4326' -crop_to_cutline -cutline PG:dbname=world -csql "SELECT (ST_Union(a.shape))::geometry(MULTIPOLYGON,4326) geom FROM basinatlas_v10_lev12 a JOIN wwf_terr_ecos b ON ST_Intersects(a.shape, b.wkb_geometry) WHERE b.eco_name = '${ecoregion}'" ${dem} ${dem%.*}_clip.tif
 ```
 
 ## Misc
