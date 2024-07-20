@@ -220,7 +220,7 @@ gdal_translate [--help] [--help-general] [--long-usage]
    <src_dataset> <dst_dataset>
 ```
 
-****Example****
+**Example**
 
 Georeference raster:  
 ```
@@ -416,6 +416,11 @@ gdal_polygonize.py [--help] [--help-general]
 ```
 file='topo15_4320_hillshade_mask.tif'
 gdal_polygonize.py ${file} ${file%.*}.gpkg ${file%.*}
+
+# with mask
+file='topo15_432.tif'
+rm -rf ${file%.*}.gpkg
+gdal_polygonize.py -mask ~/maps/naturalearth/packages/misc/land_mask.tif ${file} ${file%.*}.gpkg ${file%.*}
 ```
 
 ### gdal_rasterize
@@ -455,6 +460,11 @@ Use rasterize to grid features:
 ```
 gdal_rasterize -at -tr 0.01 0.01 -l ACS_2019_5YR_TRACT ACS_2019_5YR_TRACT.gdb -a GEOID -a_nodata NA ACS_2019_5YR_TRACT_001.tif
 gdal_polygonize.py -8 -f "GPKG" ACS_2019_5YR_TRACT_001.tif ACS_2019_5YR_TRACT_001.gpkg ACS_2019_5YR_TRACT_001 GEOID
+```
+
+Use rasterize to create a binary mask  
+```
+gdal_rasterize -burn 1 -ts 432 216 -l ne_110m_land ~/maps/naturalearth/packages/natural_earth_vector.gpkg ~/maps/naturalearth/packages/misc/land_mask.tif
 ```
 
 ### gdal_calc.py
@@ -801,16 +811,29 @@ Add m values:
 ogr2ogr -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10_xym.gpkg /home/steve/maps/wwf/hydroatlas/RiverATLAS_v10.gdb RiverATLAS_v10
 ```
 
-Reproject with gcp:  
+Reproject with gcp (city-on-a-globe):  
 ```
-file=London.osm.pbf
+file=Chicago.osm.pbf
 layer=lines
 extent=($(ogrinfo -so ${file} ${layer} | grep 'Extent' | sed -e 's/Extent: //g' -e 's/(\|)//g' -e 's/ - /, /g' -e 's/, / /g'))
-x_min=-180
-x_max=180
-y_min=-45
-y_max=45
+x_min=-20
+x_max=20
+y_min=80
+y_max=90
 ogr2ogr -overwrite -gcp ${extent[0]} ${extent[1]} ${x_min} ${y_min} -gcp ${extent[0]} ${extent[3]} ${x_min} ${y_max} -gcp ${extent[2]} ${extent[3]} ${x_max} ${y_max} -gcp ${extent[2]} ${extent[1]} ${x_max} ${y_min} ${file%.osm.pbf}_${x_min}_${x_max}_${y_min}_${y_max}.gpkg ${file}
+```
+
+Reproject with gcp (match extent from layer):  
+```
+table1=toronto
+table2=newyork
+layer=lines
+
+# query psql
+extent1=($(psql -d osm -c "COPY (SELECT ST_XMin(ST_Extent(wkb_geometry)), ST_XMax(ST_Extent(wkb_geometry)), ST_YMin(ST_Extent(wkb_geometry)), ST_YMax(ST_Extent(wkb_geometry)) FROM ${table1}_${layer} WHERE "highway" IS NOT NULL) TO STDOUT DELIMITER E'\t'"))
+extent2=($(psql -d osm -c "COPY (SELECT ST_XMin(ST_Extent(wkb_geometry)), ST_XMax(ST_Extent(wkb_geometry)), ST_YMin(ST_Extent(wkb_geometry)), ST_YMax(ST_Extent(wkb_geometry)) FROM ${table2}_${layer} WHERE "highway" IS NOT NULL) TO STDOUT DELIMITER E'\t'"))
+
+ogr2ogr -overwrite -gcp ${extent2[0]} ${extent2[1]} ${extent1[0]} ${extent1[1]} -gcp ${extent2[0]} ${extent2[3]} ${extent1[0]} ${extent1[3]} -gcp ${extent2[2]} ${extent2[3]} ${extent1[2]} ${extent1[3]} -gcp ${extent2[2]} ${extent2[1]} ${extent1[2]} ${extent1[1]} pg:dbname=osm -nln ${table1}_${table2}_${layer} pg:dbname=osm ${table2}_${layer}
 ```
 
 Create vector tiles (MVT):  
@@ -1238,6 +1261,33 @@ osmfilter /home/steve/maps/osm/highway_primary.o5m --out-count | head
 osmconvert /home/steve/maps/osm/planet_ways.o5m --out-pbf >/home/steve/maps/osm/planet_ways.osm.pbf
 # filter (--ignore-dependencies)
 osmfilter /home/steve/maps/osm/planet-latest.o5m --keep= --keep-ways="highway=" --out-o5m >/home/steve/maps/osm/planet_highway.o5m
+```
+
+Map-to-query script to get data from raster  
+```
+#!/bin/bash
+file=toronto5.png
+
+# get extent
+extent_info=$(gdalinfo ${file} | grep "Upper Left\|Lower Right")
+ul_x=$(echo $extent_info | grep -oP 'Upper Left\s+\(\s*\K[0-9\.\-]+')
+ul_y=$(echo $extent_info | grep -oP 'Upper Left\s+\(\s*[0-9\.\-]+\s*,\s*\K[0-9\.\-]+')
+lr_x=$(echo $extent_info | grep -oP 'Lower Right\s+\(\s*\K[0-9\.\-]+')
+lr_y=$(echo $extent_info | grep -oP 'Lower Right\s+\(\s*[0-9\.\-]+\s*,\s*\K[0-9\.\-]+')
+
+# calculate for margins
+width=$(echo "$lr_x - $ul_x" | bc)
+height=$(echo "$ul_y - $lr_y" | bc)
+new_width=$(echo "$width / 4" | bc)
+new_height=$(echo "$height / 4" | bc)
+
+ul_x_new=$(echo "$ul_x + $new_width" | bc)
+ul_y_new=$(echo "$ul_y - $new_height" | bc)
+lr_x_new=$(echo "$lr_x - $new_width" | bc)
+lr_y_new=$(echo "$lr_y + $new_height" | bc)
+
+# query
+psql -d osm -c "SELECT other_tags FROM toronto_polygons WHERE other_tags IS NOT NULL AND ST_Intersects(wkb_geometry, (ST_Envelope('LINESTRING($ul_x_new $ul_y_new, $lr_x_new $lr_y_new)'::geometry)::geometry(POLYGON,3857)))"
 ```
 
 ### SRTM
@@ -1814,6 +1864,9 @@ perl -p -e 's#\([^)]*\)##g'
 sed -n '/^=\+ *Location/{n;p}'
 # find + add
 sed 's/.foo/&bar/'
+
+# list installed fonts
+fc-list 
 ```
 
 ascii art  
@@ -2128,4 +2181,26 @@ const map = new maplibregl.Map({
 
 # run cors server (optional)
 ./cors_server.py
+```
+
+Query features in image using gdalinfo and psql  
+```
+file=bestwestern.png
+# get extent
+extent_info=$(gdalinfo ${file} | grep "Upper Left\|Lower Right")
+ul_x=$(echo $extent_info | grep -oP 'Upper Left\s+\(\s*\K[0-9\.\-]+')
+ul_y=$(echo $extent_info | grep -oP 'Upper Left\s+\(\s*[0-9\.\-]+\s*,\s*\K[0-9\.\-]+')
+lr_x=$(echo $extent_info | grep -oP 'Lower Right\s+\(\s*\K[0-9\.\-]+')
+lr_y=$(echo $extent_info | grep -oP 'Lower Right\s+\(\s*[0-9\.\-]+\s*,\s*\K[0-9\.\-]+')
+# calculate for margins
+width=$(echo "$lr_x - $ul_x" | bc)
+height=$(echo "$ul_y - $lr_y" | bc)
+new_width=$(echo "$width / 4" | bc)
+new_height=$(echo "$height / 4" | bc)
+ul_x_new=$(echo "$ul_x + $new_width" | bc)
+ul_y_new=$(echo "$ul_y - $new_height" | bc)
+lr_x_new=$(echo "$lr_x - $new_width" | bc)
+lr_y_new=$(echo "$lr_y + $new_height" | bc)
+# query
+psql -d osm -c "SELECT other_tags FROM toronto_polygons WHERE building IS NOT NULL AND other_tags IS NOT NULL AND ST_Intersects(wkb_geometry, (ST_Envelope('LINESTRING($ul_x_new $ul_y_new, $lr_x_new $lr_y_new)'::geometry)::geometry(POLYGON,3857)))" > ${file%.*}.txt
 ```
