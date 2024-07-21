@@ -14,10 +14,11 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 5. [Misc](#misc)  
 
 ### Github Repos
-1. [PostGIS Cookbook ⤴](https://github.com/geographyclub/postgis-cookbook)  
-2. [American Geography ⤴](https://github.com/geographyclub/american-geography) 
-3. [ImageMagick for Mapmakers ⤴](https://github.com/geographyclub/imagemagick-for-mapmakers)  
-4. [Weather-to-Video ⤴](https://github.com/geographyclub/weather-to-video)   
+1. [GRASS for remote sensing](https://github.com/geographyclub/grass-scripts)   
+2. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook)  
+3. [American Geography](https://github.com/geographyclub/american-geography) 
+4. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers)  
+5. [Weather-to-Video](https://github.com/geographyclub/weather-to-video)   
 
 ## GDAL
 
@@ -1304,6 +1305,15 @@ wget --user --password http://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.1
 Extract ocean and make positive for watershed analysis  
 ```
 gdal_calc.py --overwrite --NoDataValue=0 -A topo15_4320.tif --outfile=topo15_4320_ocean.tif --calc="(A + 10207.5)*(A<=100)"
+```
+
+Add raster labels to topo  
+```
+# first export labels as tif
+gdal_calc.py --overwrite -A topo15_432.tif -B labels_432.tif --outfile="topo15_432_labels.tif" --calc="A + 3000*(B > 0)" 
+# convert to vector (optional)
+rm -rf topo15_432_labels.gpkg
+gdal_polygonize.py topo15_432_labels.tif topo15_432_labels.gpkg
 ```
 
 ### StatsCan
