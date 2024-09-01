@@ -14,13 +14,14 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 5. [Misc](#misc)  
 
 ### Scripts  
-1. [GRASS scripts](https://github.com/gis-from-command-line/grass)   
-2. [R scripts](https://github.com/gis-from-command-line/r)   
-3. [Animating weather](https://github.com/gis-from-command-line/weather)   
+1. [GRASS scripts](https://github.com/gis-from-command-line/grass)  
+2. [R scripts](https://github.com/gis-from-command-line/r)  
+3. [ImageMagick scripts](https://github.com/gis-from-command-line/imagemagick)  
+4. [Weather scripts](https://github.com/gis-from-command-line/weather)  
 
 ### Other Repos  
-1. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook)
-2. [US Census](https://github.com/geographyclub/american-geography)
+1. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook)  
+2. [US Census](https://github.com/geographyclub/american-geography)  
 
 ## GDAL
 
