@@ -13,12 +13,14 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 4. [Dataset Examples](#dataset-examples)  
 5. [Misc](#misc)  
 
-### Github Repos
-1. [GRASS for remote sensing](https://github.com/geographyclub/grass-scripts)   
-2. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook)  
-3. [American Geography](https://github.com/geographyclub/american-geography) 
-4. [ImageMagick for Mapmakers](https://github.com/geographyclub/imagemagick-for-mapmakers)  
-5. [Weather-to-Video](https://github.com/geographyclub/weather-to-video)   
+### Scripts  
+1. [GRASS scripts](https://github.com/gis-from-command-line/grass)   
+2. [R scripts](https://github.com/gis-from-command-line/r)   
+3. [Animating weather](https://github.com/gis-from-command-line/weather)   
+
+### Other Repos  
+1. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook)
+2. [US Census](https://github.com/geographyclub/american-geography)
 
 ## GDAL
 
@@ -423,7 +425,7 @@ file='topo15_432.tif'
 rm -rf ${file%.*}.gpkg
 gdal_polygonize.py -mask ~/maps/naturalearth/packages/misc/land_mask.tif ${file} ${file%.*}.gpkg ${file%.*}
 
-# polygonize labels then union
+# polygonize label image then union letters
 gdal_polygonize.py toronto_labels.tif toronto_labels.gpkg 
 ogr2ogr -overwrite toronto_labels_union.gpkg -sql 'SELECT ST_Union(geom) geom FROM out' toronto_labels.gpkg
 ```
@@ -1268,7 +1270,7 @@ osmconvert /home/steve/maps/osm/planet_ways.o5m --out-pbf >/home/steve/maps/osm/
 osmfilter /home/steve/maps/osm/planet-latest.o5m --keep= --keep-ways="highway=" --out-o5m >/home/steve/maps/osm/planet_highway.o5m
 ```
 
-Map-to-query script to get data from raster  
+Map-to-query script to get data from bounding box of raster  
 ```
 #!/bin/bash
 file=toronto5.png
@@ -1280,7 +1282,7 @@ ul_y=$(echo $extent_info | grep -oP 'Upper Left\s+\(\s*[0-9\.\-]+\s*,\s*\K[0-9\.
 lr_x=$(echo $extent_info | grep -oP 'Lower Right\s+\(\s*\K[0-9\.\-]+')
 lr_y=$(echo $extent_info | grep -oP 'Lower Right\s+\(\s*[0-9\.\-]+\s*,\s*\K[0-9\.\-]+')
 
-# calculate for margins
+# calculate margins
 width=$(echo "$lr_x - $ul_x" | bc)
 height=$(echo "$ul_y - $lr_y" | bc)
 new_width=$(echo "$width / 4" | bc)
@@ -1307,13 +1309,22 @@ Extract ocean and make positive for watershed analysis
 gdal_calc.py --overwrite --NoDataValue=0 -A topo15_4320.tif --outfile=topo15_4320_ocean.tif --calc="(A + 10207.5)*(A<=100)"
 ```
 
-Add raster labels to topo  
+Raster labels to 3d (using gdal_calc to add to dem) 
 ```
 # first export labels as tif
 gdal_calc.py --overwrite -A topo15_432.tif -B labels_432.tif --outfile="topo15_432_labels.tif" --calc="A + 3000*(B > 0)" 
 # convert to vector (optional)
 rm -rf topo15_432_labels.gpkg
 gdal_polygonize.py topo15_432_labels.tif topo15_432_labels.gpkg
+```
+
+Raster labels to 3d (using intersection with topo polygons)  
+```
+psql -d world -c "DROP TABLE IF EXISTS labels_4320;"
+gdal_polygonize.py labels_4320.tif pg:dbname=world labels_4320
+
+# intersect with topo15 polygons
+psql -d world -c "DROP TABLE IF EXISTS labels_topo15_4320; CREATE TABLE labels_topo15_4320 AS SELECT a.dn, b.dn as dem, ST_Intersection(a.wkb_geometry, b.geom) geom FROM labels_4320 a, topo15_4320_polygons b WHERE ST_Intersects(a.wkb_geometry, b.geom);"
 ```
 
 ### StatsCan
@@ -1888,8 +1899,11 @@ sed -n '/^=\+ *Location/{n;p}'
 # find + add
 sed 's/.foo/&bar/'
 
-# list installed fonts
+# list fonts
 fc-list 
+
+# list font families
+fc-list : family | sort | uniq
 ```
 
 ascii art  
@@ -2226,4 +2240,45 @@ lr_x_new=$(echo "$lr_x - $new_width" | bc)
 lr_y_new=$(echo "$lr_y + $new_height" | bc)
 # query
 psql -d osm -c "SELECT other_tags FROM toronto_polygons WHERE building IS NOT NULL AND other_tags IS NOT NULL AND ST_Intersects(wkb_geometry, (ST_Envelope('LINESTRING($ul_x_new $ul_y_new, $lr_x_new $lr_y_new)'::geometry)::geometry(POLYGON,3857)))" > ${file%.*}.txt
+```
+
+Create a POVray scene from a dem heightmap  
+```shell
+// scene.pov
+
+// Camera setup
+camera {
+  location <0.5, 0.5, -0.001> // Position of the camera
+  look_at <0.5, 0, 0.25>       // Camera looks at the origin
+  angle 45                    // Field of view angle (smaller value zooms in)
+}
+
+// Light source setup
+light_source {
+  <-1000, 2000, -1000>        // Position of the light source (Northwest)
+  color rgb <1, 1, 1>        // Color of the light
+//  spotlight                  // Optional: Adds a spotlight effect
+//  radius 100000               // Radius of the spotlight
+//  falloff 0                // Light falloff
+//  tightness 0              // Tightness of the spotlight
+}
+
+// Height field setup
+height_field {
+  png "topo15_432.png"
+  scale <1, 0.03, 0.5> // Adjust scale based on data range
+  texture {
+    pigment {color rgb <0.9, 0.9, 0.9>} // Terrain color
+    finish {
+      ambient 0.2
+      diffuse 0.8
+      specular 0.5
+    }
+  }
+  normal {
+    bumps 0 // Add surface detail
+  }
+}
+
+// Additional scene elements
 ```
