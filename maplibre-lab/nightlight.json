@@ -1,0 +1,28 @@
+{
+   "tiles":[
+      "http://localhost:8000/{z}/{x}/{y}.pbf"
+   ],
+   "id":"osm",
+   "name":"osm",
+   "format":"pbf",
+   "type":"vector",
+   "description":"osm",
+   "bounds":[-180,-90,180,90],
+   "center":[0,0],
+   "minzoom":0,
+   "maxzoom":15,
+   "vector_layers":[
+      {
+         "id":"points",
+         "fields":{
+            "name":"String",
+            "type":"String",
+			"radius":"Number",
+			"color":"Number"
+         },
+         "minzoom":0,
+         "maxzoom":15
+      }
+   ],
+   "tilejson":"2.0.0"
+}

@@ -1,0 +1,29 @@
+{
+   "tiles":[
+      "http://localhost:8000/{z}/{x}/{y}.pbf"
+   ],
+   "id":"grid",
+   "name":"grid",
+   "format":"pbf",
+   "type":"vector",
+   "description":"World of blocks",
+   "bounds":[-180,-90,180,90],
+   "center":[0,0],
+   "minzoom":0,
+   "maxzoom":15,
+   "vector_layers":[
+      {
+         "id":"blockworld",
+         "fields":{
+            "dem_mean":"Number",
+            "slope_mean":"Number",
+            "up_area":"Number",
+            "snw_pc_syr":"Number",
+            "cmi_ix_syr":"Number"
+         },
+         "minzoom":0,
+         "maxzoom":15
+      }
+   ],
+   "tilejson":"2.0.0"
+}

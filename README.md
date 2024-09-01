@@ -18,11 +18,11 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 2. [R scripts](https://github.com/geographyclub/gis-from-command-line/tree/main/r)  
 3. [ImageMagick scripts](https://github.com/geographyclub/gis-from-command-line/tree/main/imagemagick)  
 4. [Weather scripts](https://github.com/geographyclub/gis-from-command-line/tree/main/weather)  
+5. [MapLibre Lab](https://github.com/geographyclub/gis-from-command-line/tree/main/maplibre-lab)  
 
 ### Other Repos  
 1. [PostGIS Cookbook](https://github.com/geographyclub/postgis-cookbook)  
 2. [US Census](https://github.com/geographyclub/american-geography)  
-3. [MapLibre Lab](https://github.com/geographyclub/maplibre-lab)  
 
 ## GDAL
 

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <script src='https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js'></script>
+  <link href='https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css' rel='stylesheet' />
+  <style>
+    #map {position: absolute; top: 0; right: 0; bottom: 0; left: 0;}
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+const map = new maplibregl.Map({
+	container: 'map',
+	style: {
+		version: 8,
+		sources: {
+			'vector-tiles': {
+				type: 'vector',
+				url: 'http://localhost:8000/blockworld.json' // Path to your tiles.json file
+			}
+		},
+		layers: [
+			{
+				'id': 'blockworld',
+				'source': 'vector-tiles',
+				'source-layer': 'blockworld',
+				'type': 'fill-extrusion',
+				'paint': {
+					'fill-extrusion-color': [
+						'interpolate', ['linear'],
+						['get', 'dem_mean'],
+						// gmt_ocean
+						-6000, 'rgb(  0,  5, 25)',
+						-5000, 'rgb(  0,150,200)',
+						-100, 'rgb(211,250,211)',
+						// wiki-2.0
+						0, 'rgb(148,191,139)',
+						100, 'rgb(168,198,143)',
+						500, 'rgb(232,225,182)',
+						1000, 'rgb(211,202,157)',
+						2000, 'rgb(195,167,107)',
+					],
+					'fill-extrusion-height': [
+						'interpolate',
+						['linear'],
+						['get', 'dem_mean'],
+						-11000, 11000,
+						0, 300000,
+						100, ['+', ['^', ['get', 'dem_mean'], 1.5], 310000],
+						500, ['+', ['^', ['get', 'dem_mean'], 1.5], 310000],
+					],
+					'fill-extrusion-base': 0,
+					'fill-extrusion-opacity': 1
+				}
+			}
+		]
+	},
+	center: [129.18025421992627, -9.00172547463795],
+	zoom: 1,
+    minZoom: 2, // Minimum zoom level
+    maxZoom: 3, // Maximum zoom level
+	bearing: -21,
+	pitch: 60,
+	pixelRatio: 2 // Higher pixel ratio
+});
+
+const zoomIncrement = 0.001; // Adjust the zoom rate as needed
+const pitchIncrement = 0; // Adjust the rotation rate as needed
+const latIncrement = 0.1; // Adjust the latitude increment as needed
+const frameInterval = 1000; // Interval between frame captures (in ms)
+let frameCounter = 0;
+
+function rotateZoomAndSaveFrame() {
+// Tilt the camera
+const currentPitch = map.getPitch();
+map.setPitch(currentPitch + pitchIncrement, { duration: 0 });
+
+// Zoom the camera
+const currentZoom = map.getZoom();
+map.setZoom(currentZoom + zoomIncrement, { duration: 0 });
+
+// Pan the camera
+const currentCenter = map.getCenter();
+map.setCenter([currentCenter.lng, currentCenter.lat + latIncrement], { duration: 0 });
+
+// Wait for the map to finish rendering
+map.once('idle', () => {
+//  saveFrame();
+});
+}
+
+function saveFrame() {
+const canvas = map.getCanvas();
+const paddedFrameCounter = String(frameCounter).padStart(4, '0'); // Pad with leading zeros
+canvas.toBlob(function(blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `frame_${paddedFrameCounter}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  frameCounter++;
+  URL.revokeObjectURL(url);
+}, 'image/png');
+}
+
+map.on('load', () => {
+	// Start the animation and frame capture at regular intervals
+//	setInterval(rotateZoomAndSaveFrame, frameInterval);
+
+    map.setLight({
+        'anchor': 'viewport',
+        'color': 'white', // Adjust light color
+        'intensity': 0.4, // Adjust light intensity
+        'position': [1.15, 210, 30] // Adjust light position
+    });
+});
+
+</script>
+</body>
+</html>
