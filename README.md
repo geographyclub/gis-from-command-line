@@ -28,7 +28,7 @@ All the software and scripts you need to make Linux a complete *Geographic Infor
 
 ### gdalinfo
 
-Lists information about a raster dataset. Read the [docs](https://gdal.org/programs/gdalinfo.html).
+Lists information about a raster dataset. Read the official [docs](https://gdal.org/programs/gdalinfo.html).
 
 ```
 gdalinfo [--help] [--help-general]
@@ -2283,4 +2283,10 @@ height_field {
 }
 
 // Additional scene elements
+```
+
+WMS providers  
+```
+# NASA
+https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi
 ```
