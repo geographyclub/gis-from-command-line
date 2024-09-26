@@ -7,15 +7,15 @@ modelhour=12
 dir=/home/steve/data/gdps
 mydate=$(date +"%Y%m%d")
 rm -f ${dir}/*
-for a in $(seq -f "%03g" 0 3 24); do
-#for a in $(seq -f "%03g" 0 3 240); do
+#for a in $(seq -f "%03g" 0 3 24); do
+for a in $(seq -f "%03g" 0 3 240); do
   wget -P ${dir} https://dd.weather.gc.ca/model_gem_global/15km/grib2/lat_lon/${modelhour}/${a}/CMC_glb_PRATE_SFC_0_latlon.15x.15_${mydate}${modelhour}_P${a}.grib2
   wget -P ${dir} https://dd.weather.gc.ca/model_gem_global/15km/grib2/lat_lon/${modelhour}/${a}/CMC_glb_PRMSL_MSL_0_latlon.15x.15_${mydate}${modelhour}_P${a}.grib2
   wget -P ${dir} https://dd.weather.gc.ca/model_gem_global/15km/grib2/lat_lon/${modelhour}/${a}/CMC_glb_TCDC_SFC_0_latlon.15x.15_${mydate}${modelhour}_P${a}.grib2
   wget -P ${dir} https://dd.weather.gc.ca/model_gem_global/15km/grib2/lat_lon/${modelhour}/${a}/CMC_glb_TMP_TGL_2_latlon.15x.15_${mydate}${modelhour}_P${a}.grib2;
 done
 
-##### extract #####
+##### extract by place #####
 #psql -d world -c "COPY (SELECT * FROM ne_10m_populated_places) TO STDOUT;" > /home/steve/data/places.csv
 #echo "extracting gribs..."
 #for a in TMP PRATE TCDC; do

@@ -15,11 +15,7 @@
       {
          "id":"blockworld",
          "fields":{
-            "dem_mean":"Number",
-            "slope_mean":"Number",
-            "up_area":"Number",
-            "snw_pc_syr":"Number",
-            "cmi_ix_syr":"Number"
+            "dem_mean":"Number"
          },
          "minzoom":0,
          "maxzoom":15

@@ -13,11 +13,11 @@ rm -f ~/data/tmp/*
 
 ### layers
 # longlat
-gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' -r cubicspline -ts ${width} ${height} -s_srs 'epsg:4326' -t_srs 'epsg:4326' ~/maps/naturalearth/raster/HYP_HR_SR_OB_DR.tif ~/data/tmp/layer0.tif
+gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -r cubicspline -ts ${width} ${height} -s_srs 'epsg:4326' -t_srs 'epsg:4326' ~/maps/naturalearth/raster/HYP_HR_SR_OB_DR.tif ~/data/tmp/layer0.tif
 # cloud cover
 counter=1
 ls ~/data/gdps/*TCDC*.grib2 | while read file; do
-  gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' --config GDAL_PAM_ENABLED NO ${file} '/home/steve/data/colors/white-black.txt' /vsistdout/ | gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -of 'GTiff' -r cubicspline -ts ${width} ${height} -s_srs 'epsg:4326' -t_srs 'epsg:4326' /vsistdin/ ~/data/tmp/layer1_$(printf "%06d" ${counter}).tif
+  gdaldem color-relief -alpha -f 'GRIB' -of 'GTiff' --config GDAL_PAM_ENABLED NO ${file} '/home/steve/data/colors/white-black.txt' /vsistdout/ | gdalwarp -overwrite -dstalpha --config GDAL_PAM_ENABLED NO -co PROFILE=BASELINE -f 'GTiff' -r cubicspline -ts ${width} ${height} -s_srs 'epsg:4326' -t_srs 'epsg:4326' /vsistdin/ ~/data/tmp/layer1_$(printf "%06d" ${counter}).tif
   (( counter = counter + 1 )) 
 done
 
