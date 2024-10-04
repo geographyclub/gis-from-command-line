@@ -1272,7 +1272,12 @@ osmconvert /home/steve/maps/osm/planet_ways.o5m --out-pbf >/home/steve/maps/osm/
 osmfilter /home/steve/maps/osm/planet-latest.o5m --keep= --keep-ways="highway=" --out-o5m >/home/steve/maps/osm/planet_highway.o5m
 ```
 
-Map-to-query script to get data from bounding box of raster  
+Query features in extent  
+```sql
+WITH extent AS (SELECT ST_Transform(ST_SetSRID(ST_Envelope('LINESTRING(-79.40926551818849 43.660405303140934, -79.38926696777345 43.65087315871548)'::geometry),4326),3857) geom) SELECT other_tags FROM toronto_polygons, extent WHERE other_tags IS NOT NULL AND ST_Intersects(wkb_geometry,extent.geom);
+```
+
+Map-to-query script to get data from bounding box of raster (with margins)  
 ```
 #!/bin/bash
 file=toronto5.png
