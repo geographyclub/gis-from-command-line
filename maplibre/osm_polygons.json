@@ -1,0 +1,28 @@
+{
+   "tiles":[
+      "http://localhost:8000/{z}/{x}/{y}.pbf"
+   ],
+   "id":"osm_polygons",
+   "name":"osm_polygons",
+   "format":"pbf",
+   "type":"vector",
+   "description":"osm buildings, landuse...",
+   "bounds":[-180,-90,180,90],
+   "center":[0,0],
+   "minzoom":0,
+   "maxzoom":15,
+   "vector_layers":[
+      {
+         "id":"osm_polygons",
+         "fields":{
+            "height":"Number",
+            "building":"String",
+            "landuse":"String",
+            "other_tags":"String"
+         },
+         "minzoom":0,
+         "maxzoom":15
+      }
+   ],
+   "tilejson":"2.0.0"
+}
