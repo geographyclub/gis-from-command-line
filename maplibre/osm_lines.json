@@ -1,0 +1,24 @@
+{
+   "tiles":[
+			"http://localhost:8000/{z}/{x}/{y}.pbf"
+   ],
+   "id":"osm_features",
+   "name":"osm_features",
+   "format":"pbf",
+   "type":"vector",
+   "description":"osm lines",
+   "bounds":[-180,-90,180,90],
+   "center":[0,0],
+   "vector_layers":[
+      {
+         "id":"osm_lines",
+         "fields":{
+						"osm_id":"Number",
+            "name":"String",
+            "highway":"String",
+            "other_tags":"String"
+         }
+      }
+   ],
+   "tilejson":"2.0.0"
+}
