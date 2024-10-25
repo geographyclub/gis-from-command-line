@@ -39,12 +39,12 @@ cd vector-tiles-blockworld
 ./cors_server.py
 ```
 
-OpenStreetMap polygons  
+OpenStreetMap buildings  
 ```
 cd ~/maplibre-testing
 rm -rf osm_polygons
 
-ogr2ogr -f MVT -t_srs 'epsg:3857' osm_polygons pg:dbname=osm -sql "SELECT osm_id, name, building, landuse, other_tags, COALESCE(split_part(regexp_replace(hstore(other_tags)->'height', '[^0-9.]', '', 'g'), '.', 1)::INT, split_part(regexp_replace(hstore(other_tags)->'levels', '[^0-9.]', '', 'g'), '.', 1)::INT * 10, 10) AS HEIGHT, wkb_geometry FROM toronto_polygons WHERE building IS NOT NULL OR landuse IS NOT NULL" -nlt MULTIPOLYGON -nln osm_polygons -dsco MINZOOM=15 -dsco MAXZOOM=15 -dsco COMPRESS=NO
+ogr2ogr -f MVT -t_srs 'epsg:3857' osm_polygons pg:dbname=osm -sql "SELECT osm_id, name, building, other_tags, COALESCE(split_part(regexp_replace(hstore(other_tags)->'height', '[^0-9.]', '', 'g'), '.', 1)::INT, split_part(regexp_replace(hstore(other_tags)->'levels', '[^0-9.]', '', 'g'), '.', 1)::INT * 10, 10) AS height, wkb_geometry FROM toronto_polygons WHERE building IS NOT NULL" -nlt POLYGON -nln osm_polygons -dsco MINZOOM=16 -dsco MAXZOOM=16 -dsco COMPRESS=NO
 
 cp osm_polygons.json osm_polygons
 cp cors_server.py osm_polygons
@@ -58,10 +58,24 @@ cd ~/maplibre-testing
 rm -rf osm_lines
 
 # -dsco BUFFER=100 -dsco MAX_SIZE=1000000 -dsco MAX_FEATURES=2000000
-ogr2ogr -f MVT -t_srs 'epsg:3857' osm_lines pg:dbname=osm -sql "SELECT osm_id, name, highway, other_tags, wkb_geometry FROM toronto_lines" -nlt LINESTRING -nln osm_lines -dsco MINZOOM=14 -dsco MAXZOOM=14 -dsco COMPRESS=NO
+ogr2ogr -f MVT -t_srs 'epsg:3857' osm_lines pg:dbname=osm -sql "SELECT osm_id, name, highway, other_tags, wkb_geometry FROM toronto_lines" -nlt LINESTRING -nln osm_lines -dsco MINZOOM=15 -dsco MAXZOOM=15 -dsco COMPRESS=NO
 
 cp osm_lines.json osm_lines
 cp cors_server.py osm_lines
 cd osm_lines
+./cors_server.py
+```
+
+OpenStreetMap points
+```
+cd ~/maplibre-testing
+rm -rf osm_points
+
+# -dsco BUFFER=100 -dsco MAX_SIZE=1000000 -dsco MAX_FEATURES=2000000
+ogr2ogr -f MVT -t_srs 'epsg:3857' osm_points pg:dbname=osm -sql "SELECT osm_id, name, highway, place, other_tags, ST_ClusterDBSCAN(wkb_geometry, eps:=10, minpoints:=5) OVER () AS clusterid, wkb_geometry FROM toronto_points" -nlt POINT -nln osm_points -dsco MINZOOM=15 -dsco MAXZOOM=15 -dsco COMPRESS=NO
+
+cp osm_points.json osm_points
+cp cors_server.py osm_points
+cd osm_points
 ./cors_server.py
 ```
