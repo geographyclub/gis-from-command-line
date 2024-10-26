@@ -44,7 +44,7 @@ OpenStreetMap buildings
 cd ~/maplibre-testing
 rm -rf osm_polygons
 
-ogr2ogr -f MVT -t_srs 'epsg:3857' osm_polygons pg:dbname=osm -sql "SELECT osm_id, name, building, other_tags, COALESCE(split_part(regexp_replace(hstore(other_tags)->'height', '[^0-9.]', '', 'g'), '.', 1)::INT, split_part(regexp_replace(hstore(other_tags)->'levels', '[^0-9.]', '', 'g'), '.', 1)::INT * 10, 10) AS height, wkb_geometry FROM toronto_polygons WHERE building IS NOT NULL" -nlt POLYGON -nln osm_polygons -dsco MINZOOM=16 -dsco MAXZOOM=16 -dsco COMPRESS=NO
+ogr2ogr -f MVT -t_srs 'epsg:3857' osm_polygons pg:dbname=osm -sql "SELECT osm_id, name, building, other_tags, COALESCE(split_part(regexp_replace(hstore(other_tags)->'height', '[^0-9.]', '', 'g'), '.', 1)::INT, split_part(regexp_replace(hstore(other_tags)->'levels', '[^0-9.]', '', 'g'), '.', 1)::INT * 10, 10) AS height, wkb_geometry FROM toronto_polygons WHERE building IS NOT NULL" -nlt POLYGON -nln osm_polygons -dsco MINZOOM=16 -dsco MAXZOOM=18 -dsco COMPRESS=NO
 
 cp osm_polygons.json osm_polygons
 cp cors_server.py osm_polygons
@@ -58,12 +58,12 @@ cd ~/maplibre-testing
 rm -rf osm_lines
 
 # -dsco BUFFER=100 -dsco MAX_SIZE=1000000 -dsco MAX_FEATURES=2000000
-ogr2ogr -f MVT -t_srs 'epsg:3857' osm_lines pg:dbname=osm -sql "SELECT osm_id, name, highway, other_tags, wkb_geometry FROM toronto_lines" -nlt LINESTRING -nln osm_lines -dsco MINZOOM=15 -dsco MAXZOOM=15 -dsco COMPRESS=NO
+ogr2ogr -f MVT -t_srs 'epsg:3857' osm_lines pg:dbname=osm -sql "SELECT osm_id, name, highway, other_tags, wkb_geometry FROM toronto_lines" -nlt LINESTRING -nln osm_lines -dsco MINZOOM=16 -dsco MAXZOOM=18 -dsco COMPRESS=NO
 
 cp osm_lines.json osm_lines
 cp cors_server.py osm_lines
 cd osm_lines
-./cors_server.py
+./cors_server.py 8001
 ```
 
 OpenStreetMap points
