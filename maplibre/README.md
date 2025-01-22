@@ -1,11 +1,34 @@
 # maplibre-lab
 Experiments in web mapping with MapLibre.  
 
-Use a cors server (like cors_server.py) to test this on a local machine.  
+Use a cors server (like *cors_server.py*) to test this on a local machine.  
 
-### How I make MVT vector tiles
+### Requirements
 
 You will need BASH, GDAL and PostgreSQL/PostGIS installed.  
+
+Install fontnik to convert fonts to pbf:  
+```
+# Install Node.js and fontnik
+sudo apt update
+sudo apt install -y nodejs npm
+npm install -g fontnik
+
+# Install fontmake for generating font intermediates
+sudo apt install -y python3-pip
+pip3 install fontmake
+
+# npm local
+mkdir -p ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=$PATH:/home/steve/.npm-global/bin' >> ~/.bashrc
+source ~/.bashrc
+
+build-glyphs /home/steve/.fonts/ofl/notosans/NotoSans-Bold.ttf ~/maplibre-testing/notosans
+build-glyphs /home/steve/.fonts/ofl/montserrat/Montserrat[wght].ttf ~/maplibre-testing/montserrat
+```
+
+### How I make MVT vector tiles
 
 Night lights from OpenStreetMap points:  
 ```
@@ -39,17 +62,14 @@ cd vector-tiles-blockworld
 ./cors_server.py
 ```
 
-OpenStreetMap buildings  
+OpenStreetMap polygons  
 ```
 cd ~/maplibre-testing
 rm -rf osm_polygons
 
-ogr2ogr -f MVT -t_srs 'epsg:3857' osm_polygons pg:dbname=osm -sql "SELECT osm_id, name, building, other_tags, COALESCE(split_part(regexp_replace(hstore(other_tags)->'height', '[^0-9.]', '', 'g'), '.', 1)::INT, split_part(regexp_replace(hstore(other_tags)->'levels', '[^0-9.]', '', 'g'), '.', 1)::INT * 10, 10) AS height, wkb_geometry FROM toronto_polygons WHERE building IS NOT NULL" -nlt POLYGON -nln osm_polygons -dsco MINZOOM=16 -dsco MAXZOOM=18 -dsco COMPRESS=NO
+ogr2ogr -f MVT -t_srs 'epsg:3857' osm_polygons pg:dbname=osm -sql "SELECT osm_id, name, building, landuse, other_tags, COALESCE(split_part(regexp_replace(hstore(other_tags)->'height', '[^0-9.]', '', 'g'), '.', 1)::INT, split_part(regexp_replace(hstore(other_tags)->'levels', '[^0-9.]', '', 'g'), '.', 1)::INT * 10, 10) AS height, wkb_geometry FROM toronto_polygons" -nlt POLYGON -nln osm_polygons -dsco MINZOOM=16 -dsco MAXZOOM=18 -dsco COMPRESS=NO
 
-cp osm_polygons.json osm_polygons
-cp cors_server.py osm_polygons
-cd osm_polygons
-./cors_server.py
+./cors_server.py 8000
 ```
 
 OpenStreetMap lines
