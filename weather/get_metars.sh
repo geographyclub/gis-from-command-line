@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### download metars
-# https://aviationweather.gov/data/cache/metars.cache.xml.gz
+# curl https://aviationweather.gov/data/cache/metars.cache.xml
 curl "https://aviationweather.gov/data/cache/metars.cache.csv.gz" | gunzip -c | sed '1,5d' > metars.csv
 
 ### make vrt file

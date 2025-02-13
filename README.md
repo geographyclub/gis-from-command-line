@@ -1952,6 +1952,9 @@ cat /home/steve/wikipedia/tables/table_wwf_ecoregions.json | jq -r '."List of te
 # parse from api
 url=$(curl 'https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts|mapdata&exchars=200&exlimit=max&explaintext&exintro&titles='${hood} | jq '..|.mapdata?' | grep '.map' | sed -e 's/^.*w\/api/https\:\/\/en\.wikipedia\.org\/w\/api/g' -e 's/\.map.*$/\.map/g')
 curl -q ${url} | jq '.jsondata.data' > ${hood}.geojson
+
+# convert json to geojson
+jq -c '{type: "FeatureCollection", features: [ .[] | {type: "Feature", properties: ., geometry: {type: "Point", coordinates: [.lon, .lat]}} ]}' airports.json > airports.geojson
 ```
 
 vim  
