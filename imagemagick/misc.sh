@@ -192,3 +192,16 @@ convert $dir_in/$1 -colorspace gray -sketch 0x10+120 $dir/"sketch.png"
 
 # gradienting
 convert $dir_in/$1 \( -size ${ww}x${hh} gradient: \) -alpha off -compose copy_opacity -composite $dir/"gradient1.png"
+
+## create shadow with transparency
+# Set the directory containing images
+image_dir="/home/steve/maplibre-working/img/logos"
+output_dir="/home/steve/maplibre-working/img"
+# Loop through each PNG file in the directory
+for file in "$image_dir"/*.png; do
+    # Extract the filename without path and extension
+    filename=$(basename -- "$file" .png)
+
+    convert "$file" \( +clone  -background black  -shadow 2x2-2+0 \) +swap -background none -layers merge  +repage "$output_dir/${filename}_shadow.png"
+    echo "$filename"
+done

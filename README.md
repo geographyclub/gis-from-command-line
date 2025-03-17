@@ -1379,6 +1379,8 @@ https://en.wikipedia.org/w/api.php?action=parse&page=Atlantic_Equatorial_coastal
 # by coordinate (gscoord, gspage, gsbbox)
 https://en.wikipedia.org/w/api.php?action=query&format=json&list=geosearch&gscoord=40.418670|-3.699389&gsradius=10000&gslimit=100
 
+https://en.wikipedia.org/w/api.php?action=query&format=json&generator=geosearch&prop=extracts&exintro=true&explaintext=true&ggscoord=40.418670|-3.699389&ggsradius=10000&ggslimit=100
+
 # by title
 https://en.wikipedia.org/w/api.php?action=query&format=json&prop=coordinates|description|extracts&exintro=&explaintext=&titles=Amazon River
 
