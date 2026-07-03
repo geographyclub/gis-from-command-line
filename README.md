@@ -822,7 +822,9 @@ ogr2ogr -f 'GPKG' -dim XYM -zfield 'CATCH_SKM' /home/steve/maps/wwf/hydroatlas/R
 
 Reproject with gcp (city-on-a-globe):  
 ```
-file=Chicago.osm.pbf
+file=Toronto.osm.pbf
+#layer=points
+#layer=multipolygons
 layer=lines
 extent=($(ogrinfo -so ${file} ${layer} | grep 'Extent' | sed -e 's/Extent: //g' -e 's/(\|)//g' -e 's/ - /, /g' -e 's/, / /g'))
 x_min=-20
